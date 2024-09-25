@@ -1,0 +1,18 @@
+[package]
+name = "sorter"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+rand = "0.8.5"
+libm = "*"
+tempfile = "3.2"
+console = "0.15.8"
+either = "1.13.0"
+tuple-map = "0.4.0"
+
+[profile.dev]
+opt-level = 3
+debug = 1
+debug-assertions = false
+overflow-checks = false
