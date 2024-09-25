@@ -12,7 +12,12 @@ use std::thread;
 const EMOJIS: &[&str] = &["📅", "⏳", "✅"];
 
 pub fn main() -> io::Result<()> {
-    std::env::set_current_dir("..")?;
+    // get first arg and set current dir to it
+    let mut args = std::env::args();
+    args.next();
+    let dir = args.next().unwrap();
+    println!("dir: {}", dir);
+    std::env::set_current_dir(dir)?;
     loop {
         run()?
     }
