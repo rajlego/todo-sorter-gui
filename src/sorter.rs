@@ -12,7 +12,6 @@ use std::thread;
 const EMOJIS: &[&str] = &["📅", "⏳", "✅"];
 
 pub fn main() -> io::Result<()> {
-    // get first arg and set current dir to it
     let mut args = std::env::args();
     args.next();
     let dir = args.next().unwrap();
