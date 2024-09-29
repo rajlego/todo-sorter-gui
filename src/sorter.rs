@@ -25,6 +25,11 @@ pub fn main() -> io::Result<()> {
 fn run() -> io::Result<()> {
     let (mut with_rid, mut without_rid) = get_todos()?;
 
+    if without_rid.is_empty() && with_rid.is_empty() {
+        println!("No todos found");
+        return Ok(());
+    }
+
     let comparisons = if let Ok(file) = File::open("ratings.log") {
         let fr = io::BufReader::new(&file);
         fr.lines()
