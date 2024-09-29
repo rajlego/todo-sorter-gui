@@ -25,22 +25,26 @@ pub fn main() -> io::Result<()> {
 fn run() -> io::Result<()> {
     let (mut with_rid, mut without_rid) = get_todos()?;
 
-    let comparisons: Vec<(usize, usize)> = io::BufReader::new(File::open("ratings.log")?)
-        .lines()
-        .filter_map(|line| {
-            let line = line.ok()?;
-            if let [i, j] = line
-                .split(',')
-                .filter_map(|s| s.parse().ok())
-                .filter(|&i| with_rid.contains_key(&i))
-                .collect::<Vec<_>>()[..]
-            {
-                Some((i, j))
-            } else {
-                None
-            }
-        })
-        .collect();
+    let comparisons = if let Ok(file) = File::open("ratings.log") {
+        let fr = io::BufReader::new(&file);
+        fr.lines()
+            .filter_map(|line| {
+                let line = line.ok()?;
+                if let [i, j] = line
+                    .split(',')
+                    .filter_map(|s| s.parse().ok())
+                    .filter(|&i| with_rid.contains_key(&i))
+                    .collect::<Vec<_>>()[..]
+                {
+                    Some((i, j))
+                } else {
+                    None
+                }
+            })
+            .collect()
+    } else {
+        Vec::new()
+    };
 
     let mut id_to_index: HashMap<_, _> = with_rid
         .iter()
