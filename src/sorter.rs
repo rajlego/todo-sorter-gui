@@ -15,8 +15,12 @@ pub fn main() -> io::Result<()> {
     let mut args = std::env::args();
     args.next();
     let dir = args.next().unwrap();
-    println!("dir: {}", dir);
-    std::env::set_current_dir(dir)?;
+    std::env::set_current_dir(dir.clone())?;
+    println!(
+        "dir: {} (should be = to {})",
+        std::env::current_dir()?.display(),
+        dir
+    );
     loop {
         run()?
     }

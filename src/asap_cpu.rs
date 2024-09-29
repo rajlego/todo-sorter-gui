@@ -101,7 +101,6 @@ impl ASAP {
         // let mut rng = thread_rng();
         let mut indices = Vec::new();
         let mut weights = Vec::new();
-        println!("gain_mat: {:?}", gain_mat);
 
         for (i, row) in gain_mat.iter().enumerate() {
             for (j, &gain) in row.iter().enumerate() {
