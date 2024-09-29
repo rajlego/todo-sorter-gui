@@ -17,7 +17,7 @@ pub fn main() -> io::Result<()> {
     let dir = args.next().unwrap();
     std::env::set_current_dir(dir.clone())?;
     println!(
-        "dir: {} (should be = to {})",
+        "dir: {} (should be = {})",
         std::env::current_dir()?.display(),
         dir
     );
@@ -166,6 +166,9 @@ fn get_todos() -> io::Result<(HashMap<usize, Todo>, Vec<Todo>)> {
         .args(&[r"^\s*- \[ \]", ".", "-n"])
         .output()?;
     let output = String::from_utf8_lossy(&command_output.stdout);
+    if !command_output.status.success() {
+        println!("Error running rg, is it installed?");
+    }
 
     let mut with_rid = HashMap::new();
     let mut without_rid = Vec::new();
