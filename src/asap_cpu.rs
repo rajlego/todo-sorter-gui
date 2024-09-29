@@ -105,10 +105,8 @@ impl ASAP {
 
         for (i, row) in gain_mat.iter().enumerate() {
             for (j, &gain) in row.iter().enumerate() {
-                if gain > 0.0 {
-                    indices.push((i, j));
-                    weights.push(exp(gain * 20.0));
-                }
+                indices.push((i, j));
+                weights.push(exp(gain * 20.0));
             }
         }
 
