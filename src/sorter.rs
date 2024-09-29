@@ -76,21 +76,21 @@ fn run() -> io::Result<()> {
 
     let (pair, prob, ms_curr, vs_curr) = asap.run_asap(&m);
 
-    // {
-    //     let id_to_index = id_to_index.clone();
-    //     let prob = prob.clone();
-    //     let ms_curr = ms_curr.clone();
-    //     thread::spawn(move || {
-    //         crate::plot_ratings::plot_ratings(
-    //             "ratings.log",
-    //             "ratings_graph",
-    //             &ms_curr,
-    //             &id_to_index,
-    //             &prob,
-    //         )
-    //         .unwrap();
-    //     });
-    // }
+    {
+        let id_to_index = id_to_index.clone();
+        let prob = prob.clone();
+        let ms_curr = ms_curr.clone();
+        thread::spawn(move || {
+            crate::plot_ratings::plot_ratings(
+                "ratings.log",
+                "ratings_graph",
+                &ms_curr,
+                &id_to_index,
+                &prob,
+            )
+            .unwrap();
+        });
+    }
 
     {
         let index_to_id = index_to_id.clone();

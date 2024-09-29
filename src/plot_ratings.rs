@@ -118,7 +118,9 @@ pub fn plot_ratings(
         ));
     }
 
-    let file = File::open(input_file)?;
+    let Ok(file) = File::open(input_file) else {
+        return Ok(());
+    };
     let reader = io::BufReader::new(file);
 
     let mut edges: HashMap<(usize, usize), f64> = HashMap::new();
