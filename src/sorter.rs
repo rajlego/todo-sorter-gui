@@ -145,7 +145,11 @@ fn run() -> io::Result<()> {
     io::stdout().flush()?;
     let c = console::Term::stdout().read_char()?;
     println!();
-    let mut file = File::options().append(true).open("ratings.log")?;
+    let mut file = if let Ok(file) = File::options().append(true).open("ratings.log") {
+        file
+    } else {
+        File::create("ratings.log")?
+    };
     writeln!(
         file,
         "{},{}",
