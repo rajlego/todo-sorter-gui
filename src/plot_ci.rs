@@ -18,7 +18,6 @@ pub fn plot_ci(mut items: Vec<(String, f64, f64)>, filename: &str) -> std::io::R
     let total_width = left_margin + graph_width + right_margin;
     let row_height = 20.0;
     let height = row_height * items.len() as f64 + 40.0; // Add some extra space at the bottom
-    let bar_height = 20.0;
 
     let min_mean = items
         .iter()

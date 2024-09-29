@@ -62,7 +62,6 @@ fn run() -> io::Result<()> {
     let (pair, prob, ms_curr, vs_curr) = asap.run_asap(&m);
 
     {
-        let index_to_id = index_to_id.clone();
         let id_to_index = id_to_index.clone();
         let prob = prob.clone();
         let ms_curr = ms_curr.clone();
@@ -71,7 +70,6 @@ fn run() -> io::Result<()> {
                 "ratings.log",
                 "ratings_graph",
                 &ms_curr,
-                &index_to_id,
                 &id_to_index,
                 &prob,
             )

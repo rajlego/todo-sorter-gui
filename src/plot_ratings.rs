@@ -3,10 +3,6 @@ use std::fs::File;
 use std::io::{self, BufRead, Write};
 use std::process::Command;
 
-fn sigmoid(x: f64) -> f64 {
-    1.0 / (1.0 + x.exp())
-}
-
 // fn rating_to_color(range: f64, rating: f64) -> String {
 //     // let clamped_rating = rating.max(-2.0).min(2.0);
 //     color_from_norm(normalized)
@@ -91,7 +87,6 @@ pub fn plot_ratings(
     input_file: &str,
     output_file: &str,
     ms_curr: &[f64],
-    index_to_id: &HashMap<usize, usize>,
     id_to_index: &HashMap<usize, usize>,
     prob: &[Vec<f64>],
 ) -> io::Result<()> {
