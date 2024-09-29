@@ -69,8 +69,8 @@ fn run() -> io::Result<()> {
             m[id_to_index[&i]][id_to_index[&j]] += 1;
         }
     }
-    println!("m: {:?}", m);
-    println!("n: {}", n);
+    // println!("m: {:?}", m);
+    // println!("n: {}", n);
 
     let mut asap = ASAP::new(n);
 
