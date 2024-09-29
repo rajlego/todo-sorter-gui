@@ -169,11 +169,16 @@ fn get_todos() -> io::Result<(HashMap<usize, Todo>, Vec<Todo>)> {
                 todo: line.to_string(),
             };
 
-            if let Some(start) = line.find("[[rid::")
-                && let Some(end) = line[start..].find("]]")
-                && let Ok(rid) = line[start + 7..start + end].parse()
-            {
-                with_rid.insert(rid, todo);
+            if let Some(start) = line.find("[[rid::") {
+                if let Some(end) = line[start..].find("]]") {
+                    if let Ok(rid) = line[start + 7..start + end].parse() {
+                        with_rid.insert(rid, todo);
+                    } else {
+                        println!("Invalid rid: {}", &line[start + 7..start + end]);
+                    }
+                } else {
+                    println!("Invalid rid: {}", &line[start..]);
+                }
             } else {
                 without_rid.push(todo);
             }

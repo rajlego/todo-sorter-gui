@@ -1,8 +1,9 @@
-#![feature(let_chains)]
-#![feature(core_intrinsics)]
+// #![feature(let_chains)]
+// #![feature(core_intrinsics)]
 mod asap_cpu;
-pub mod plot_ratings;
+mod mp;
 mod plot_ci;
+pub mod plot_ratings;
 mod sorter;
 
 fn main() {

@@ -287,10 +287,11 @@ impl TrueSkillSolver {
             }
 
             while let Some(j) = todo_cmps.pop() {
-                unsafe {
-                    std::intrinsics::assume(g[j][0] < self.n && g[j][1] < self.n);
-                    std::intrinsics::assume(j < self.g.len());
-                }
+                // TODO to avoid bounds check but can't use nightly bc raj :(
+                // unsafe {
+                //     std::intrinsics::assume(g[j][0] < self.n && g[j][1] < self.n);
+                //     std::intrinsics::assume(j < self.g.len());
+                // }
 
                 // unsafe {
                 //     std::intrinsics::assume(g[j][0] < self.n && g[j][1] < self.n);
