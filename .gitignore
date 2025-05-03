@@ -1,0 +1,40 @@
+# Rust build artifacts
+/target/
+**/*.rs.bk
+
+# Executables and logs
+*.exe
+*.log
+*.out
+*.pyc
+*.pyo
+*.pyd
+*.so
+*.dylib
+*.dll
+
+# IDE and editor files
+/.idea/
+*.swp
+*.swo
+*.swn
+*.bak
+*.tmp
+*.vscode/
+.DS_Store
+Thumbs.db
+
+# Cargo specific
+Cargo.lock
+
+# By default, don't ignore Cargo.lock for libraries, but do for binaries
+# Uncomment the next line if this is a binary project
+# Cargo.lock
+
+# Misc
+*.old
+*.orig
+*.rej
+
+# Ripgrep
+.rg.cache 
