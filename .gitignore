@@ -37,4 +37,7 @@ Cargo.lock
 *.rej
 
 # Ripgrep
-.rg.cache 
+.rg.cache
+
+# Project specific
+tasks.md
