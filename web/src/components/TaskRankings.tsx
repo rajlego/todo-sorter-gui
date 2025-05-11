@@ -65,14 +65,9 @@ const TaskRankings: React.FC<TaskRankingsProps> = ({ tasks, comparisons }) => {
   // Show loading state
   if (loading) {
     return (
-      <div className="bg-white rounded-lg shadow p-6 text-center">
-        <h2 className="text-xl font-bold mb-4">Task Rankings</h2>
-        <div className="flex justify-center">
-          <svg className="animate-spin h-8 w-8 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-          </svg>
-        </div>
+      <div className="flex justify-center items-center p-8">
+        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-indigo-500 dark:border-indigo-400"></div>
+        <span className="ml-3 text-gray-600 dark:text-gray-400">Loading rankings...</span>
       </div>
     );
   }
@@ -80,31 +75,34 @@ const TaskRankings: React.FC<TaskRankingsProps> = ({ tasks, comparisons }) => {
   // Show error state with fallback ranking
   if (error) {
     return (
-      <div className="bg-white rounded-lg shadow p-6">
-        <h2 className="text-xl font-bold mb-4">Task Rankings</h2>
-        <div className="text-red-500 text-sm mb-4">{error}</div>
+      <div className="p-6 rounded-lg bg-red-50 dark:bg-red-900/20 text-center">
+        <svg className="mx-auto h-10 w-10 text-red-500 dark:text-red-400 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+        </svg>
+        <h3 className="text-lg font-medium text-red-800 dark:text-red-300 mb-2">Failed to load rankings</h3>
+        <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
         
         {rankedTasks.length > 0 && (
-          <div className="overflow-y-auto max-h-[500px]">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+          <div className="mt-6 overflow-y-auto max-h-[400px]">
+            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+              <thead className="bg-gray-50 dark:bg-gray-800/50">
                 <tr>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     Rank
                   </th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     Task
                   </th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                 {rankedTasks.map((task) => (
-                  <tr key={task.id} className="hover:bg-gray-50">
-                    <td className="px-3 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
+                  <tr key={task.id} className="hover:bg-gray-50 dark:hover:bg-gray-750">
+                    <td className="px-3 py-3 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">
                       {task.rank}
                     </td>
-                    <td className="px-3 py-2 text-sm text-gray-900">
-                      <span className={task.completed ? 'line-through text-gray-500' : ''}>
+                    <td className="px-3 py-3 text-sm text-gray-900 dark:text-gray-100">
+                      <span className={task.completed ? 'line-through text-gray-500 dark:text-gray-500' : ''}>
                         {task.content}
                       </span>
                     </td>
@@ -121,58 +119,103 @@ const TaskRankings: React.FC<TaskRankingsProps> = ({ tasks, comparisons }) => {
   // Show empty state when no tasks or comparisons
   if (tasks.length === 0) {
     return (
-      <div className="bg-white rounded-lg shadow p-6 text-center">
-        <h2 className="text-xl font-bold mb-4">Task Rankings</h2>
-        <p className="text-gray-500">No tasks found. Add tasks in the editor.</p>
+      <div className="flex flex-col items-center justify-center py-8 text-center">
+        <div className="w-16 h-16 mb-4 text-gray-300 dark:text-gray-600">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+          </svg>
+        </div>
+        <h3 className="text-lg font-medium text-gray-700 dark:text-gray-300 mb-1">No Tasks Yet</h3>
+        <p className="text-gray-500 dark:text-gray-400 max-w-sm">
+          Add tasks in the editor to start ranking them.
+        </p>
       </div>
     );
   }
 
   if (comparisons.length === 0) {
     return (
-      <div className="bg-white rounded-lg shadow p-6 text-center">
-        <h2 className="text-xl font-bold mb-4">Task Rankings</h2>
-        <p className="text-gray-500">No comparisons yet. Compare tasks to see rankings.</p>
+      <div className="flex flex-col items-center justify-center py-8 text-center">
+        <div className="w-16 h-16 mb-4 text-gray-300 dark:text-gray-600">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" />
+          </svg>
+        </div>
+        <h3 className="text-lg font-medium text-gray-700 dark:text-gray-300 mb-1">No Comparisons Yet</h3>
+        <p className="text-gray-500 dark:text-gray-400 max-w-sm">
+          Compare tasks to generate rankings. The more comparisons you make, the more accurate the rankings will be.
+        </p>
       </div>
     );
   }
 
   // Show rankings
   return (
-    <div className="bg-white rounded-lg shadow p-6">
-      <h2 className="text-xl font-bold mb-4">Task Rankings</h2>
+    <div>
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-lg font-medium text-gray-800 dark:text-gray-200">Rankings</h3>
+        
+        <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+          <div className="flex items-center">
+            <span className="inline-block w-3 h-3 rounded-full bg-emerald-400 dark:bg-emerald-500 mr-1"></span>
+            <span>High</span>
+          </div>
+          <div className="flex items-center">
+            <span className="inline-block w-3 h-3 rounded-full bg-amber-400 dark:bg-amber-500 mr-1"></span>
+            <span>Medium</span>
+          </div>
+          <div className="flex items-center">
+            <span className="inline-block w-3 h-3 rounded-full bg-red-400 dark:bg-red-500 mr-1"></span>
+            <span>Low</span>
+          </div>
+        </div>
+      </div>
       
-      <div className="overflow-y-auto max-h-[500px]">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
+      <div className="overflow-y-auto max-h-[400px] -mr-4 pr-4">
+        <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+          <thead className="bg-gray-50 dark:bg-gray-800/50 sticky top-0 z-10">
             <tr>
-              <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-16">
                 Rank
               </th>
-              <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                 Task
               </th>
-              <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th scope="col" className="px-3 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-24">
                 Score
               </th>
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {rankedTasks.map((task) => (
-              <tr key={task.id} className="hover:bg-gray-50">
-                <td className="px-3 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
-                  {task.rank}
-                </td>
-                <td className="px-3 py-2 text-sm text-gray-900">
-                  <span className={task.completed ? 'line-through text-gray-500' : ''}>
-                    {task.content}
-                  </span>
-                </td>
-                <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
-                  {task.score.toFixed(2)}
-                </td>
-              </tr>
-            ))}
+          <tbody className="bg-white dark:bg-transparent divide-y divide-gray-200 dark:divide-gray-700">
+            {rankedTasks.map((task) => {
+              // Determine score color based on relative position
+              const scoreColorClass = 
+                task.rank <= Math.ceil(rankedTasks.length / 3)
+                  ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400'
+                  : task.rank <= Math.ceil(rankedTasks.length * 2 / 3)
+                    ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400'
+                    : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400';
+              
+              return (
+                <tr key={task.id} className="hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors">
+                  <td className="px-3 py-3 whitespace-nowrap">
+                    <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 font-medium text-sm">
+                      {task.rank}
+                    </div>
+                  </td>
+                  <td className="px-3 py-3 text-sm text-gray-900 dark:text-gray-100">
+                    <span className={task.completed ? 'line-through text-gray-500 dark:text-gray-500' : ''}>
+                      {task.content}
+                    </span>
+                  </td>
+                  <td className="px-3 py-3 whitespace-nowrap text-right">
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${scoreColorClass}`}>
+                      {task.score.toFixed(2)}
+                    </span>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
