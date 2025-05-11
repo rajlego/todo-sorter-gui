@@ -1,4 +1,4 @@
-// Custom build script to avoid Rollup native dependency issues
+// Custom build script to avoid dependency issues
 import { build } from 'vite';
 import { exec } from 'child_process';
 import { promisify } from 'util';
@@ -15,21 +15,14 @@ async function main() {
     // Then build with Vite
     console.log('Building with Vite...');
     await build({
-      // Force using JS API which avoids native dependencies
       configFile: './vite.config.ts',
       mode: 'production',
-      // Additional options to improve compatibility
       build: {
         emptyOutDir: true,
-        // Use legacy options that are more compatible
-        target: 'es2015',
-        cssTarget: 'chrome80',
+        // Use basic build options for maximum compatibility
         minify: 'terser',
         terserOptions: {
           compress: {
-            // Disable advanced optimizations
-            ecma: 5,
-            keep_infinity: true,
             passes: 1
           }
         }

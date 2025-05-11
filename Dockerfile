@@ -26,21 +26,18 @@ WORKDIR /app
 # Copy the entire project
 COPY . .
 
-# Build the frontend
+# Force create package-lock.json locally before build on container
 WORKDIR /app/web
-# Use npm install instead of npm ci to update the lock file
+# We use npm install instead of npm ci to handle any discrepancies in package-lock.json
 RUN npm install
-# Install terser explicitly
-RUN npm install terser
+# Build the frontend 
 RUN npm run build
 
-# Go back to the main directory
-WORKDIR /app
-
 # Build the Rust backend
+WORKDIR /app
 RUN cargo build --release
 
-# Create a directory for the static files
+# Create a directory for the static files and copy the built frontend
 RUN mkdir -p /app/static
 RUN cp -r /app/web/dist/* /app/static/
 

@@ -1,6 +1,5 @@
 import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
-import { resolve } from 'path'
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
@@ -12,19 +11,9 @@ export default defineConfig(({ mode }) => {
     plugins: [
       react(),
     ],
-    resolve: {
-      alias: {
-        // Add any aliases if needed
-      },
-    },
     build: {
-      // Disable the use of native speed optimizations that might not be available in all environments
-      target: 'es2020',
+      // Disable the use of native speed optimizations
       rollupOptions: {
-        // Disable native module
-        treeshake: {
-          moduleSideEffects: 'no-external',
-        },
         output: {
           manualChunks: {
             'react-vendor': ['react', 'react-dom'],
@@ -32,14 +21,6 @@ export default defineConfig(({ mode }) => {
           }
         }
       }
-    },
-    server: {
-      fs: {
-        allow: [
-          __dirname,
-          resolve(__dirname, 'src'),
-        ],
-      },
     },
     define: {
       // Pass Railway environment variables to the frontend
