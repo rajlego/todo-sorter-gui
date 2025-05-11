@@ -6,9 +6,32 @@ dockerfilePath = "Dockerfile"
 numReplicas = 1
 sleepApplication = false
 restartPolicyType = "on_failure"
-startCommand = "/app/target/release/sorter api"
+startCommand = "/app/start.sh"
 
 # Environment variables
 [variables]
 PORT = "3000"
 STATIC_DIR = "/app/web/dist"
+# Note: DATABASE_URL will be automatically set by Railway when you link a PostgreSQL database 
+# JWT_SECRET should be set in the Railway dashboard for security reasons
+
+# Health check
+[deploy.healthCheck]
+path = "/api/health"
+interval = "30s"
+timeout = "10s"
+retries = 5
+
+# Resource allocation
+[deploy.resources]
+cpu = 1000
+memory = 1024 # 1GB
+
+# Enable a PostgreSQL database for this application
+[services.postgresql]
+plan = "free"
+
+# Networking
+[[services.ports]]
+port = 3000
+handlers = ["http"]

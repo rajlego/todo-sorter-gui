@@ -1,0 +1,573 @@
+{
+  "db": "PostgreSQL",
+  "1a49c288e3ec9310b887904872da89d2453fe212e1cca58b517cad2af6d38a9d": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "file_id",
+          "ordinal": 1,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "task_a_id",
+          "ordinal": 2,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "task_b_id",
+          "ordinal": 3,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "winner_id",
+          "ordinal": 4,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "created_at",
+          "ordinal": 5,
+          "type_info": "Timestamptz"
+        }
+      ],
+      "nullable": [false, false, false, false, false, false],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Uuid",
+          "Uuid",
+          "Uuid"
+        ]
+      }
+    },
+    "query": "INSERT INTO comparisons (file_id, task_a_id, task_b_id, winner_id)\n            VALUES ($1, $2, $3, $4)\n            RETURNING id, file_id, task_a_id, task_b_id, winner_id, created_at"
+  },
+  "22697cd54191e8de380d7da0bb55bc227da6ee4e115d0b579cbb9caf3d6a1cf5": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "user_id",
+          "ordinal": 1,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "title",
+          "ordinal": 2,
+          "type_info": "Text"
+        },
+        {
+          "name": "content",
+          "ordinal": 3,
+          "type_info": "Text"
+        },
+        {
+          "name": "created_at",
+          "ordinal": 4,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "updated_at",
+          "ordinal": 5,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "last_accessed",
+          "ordinal": 6,
+          "type_info": "Timestamptz"
+        }
+      ],
+      "nullable": [false, false, false, false, false, false, false],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Text",
+          "Text"
+        ]
+      }
+    },
+    "query": "UPDATE markdown_files\n            SET title = $2, content = $3, updated_at = NOW()\n            WHERE id = $1\n            RETURNING id, user_id, title, content, created_at, updated_at, last_accessed"
+  },
+  "3b2e8f8e3a7ff6936bbc6a34063d07af1da8c0dd6d218f130f7576a759dc2bc9": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "file_id",
+          "ordinal": 1,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "task_a_id",
+          "ordinal": 2,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "task_b_id",
+          "ordinal": 3,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "winner_id",
+          "ordinal": 4,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "created_at",
+          "ordinal": 5,
+          "type_info": "Timestamptz"
+        }
+      ],
+      "nullable": [false, false, false, false, false, false],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT id, file_id, task_a_id, task_b_id, winner_id, created_at\n            FROM comparisons\n            WHERE file_id = $1"
+  },
+  "4c1f5eb79f6eebe6a4df90b9e4d1c1aa5e9a5c7c4cb65c9d42eea1de76b19c5a": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "file_id",
+          "ordinal": 1,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "content",
+          "ordinal": 2,
+          "type_info": "Text"
+        },
+        {
+          "name": "created_at",
+          "ordinal": 3,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "created_by",
+          "ordinal": 4,
+          "type_info": "Uuid"
+        }
+      ],
+      "nullable": [false, false, false, false, false],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT id, file_id, content, created_at, created_by\n            FROM file_versions\n            WHERE file_id = $1\n            ORDER BY created_at DESC"
+  },
+  "55bca67b518e4386e9011b14df66e0cb75eb5e56ec76c8e35fdab5e72d9e9c61": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "file_id",
+          "ordinal": 1,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "content",
+          "ordinal": 2,
+          "type_info": "Text"
+        },
+        {
+          "name": "completed",
+          "ordinal": 3,
+          "type_info": "Bool"
+        },
+        {
+          "name": "line_number",
+          "ordinal": 4,
+          "type_info": "Int4"
+        },
+        {
+          "name": "rank",
+          "ordinal": 5,
+          "type_info": "Float8"
+        },
+        {
+          "name": "score",
+          "ordinal": 6,
+          "type_info": "Float8"
+        },
+        {
+          "name": "created_at",
+          "ordinal": 7,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "updated_at",
+          "ordinal": 8,
+          "type_info": "Timestamptz"
+        }
+      ],
+      "nullable": [false, false, false, false, false, true, true, false, false],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Text",
+          "Bool",
+          "Int4"
+        ]
+      }
+    },
+    "query": "INSERT INTO tasks (file_id, content, completed, line_number)\n            VALUES ($1, $2, $3, $4)\n            RETURNING id, file_id, content, completed, line_number, rank, score, created_at, updated_at"
+  },
+  "7c9dd9fa241e1d2d0e04faa9a60b9d5ae43a82c29e5b98b1f65a2af591e1ba14": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "file_id",
+          "ordinal": 1,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "content",
+          "ordinal": 2,
+          "type_info": "Text"
+        },
+        {
+          "name": "created_at",
+          "ordinal": 3,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "created_by",
+          "ordinal": 4,
+          "type_info": "Uuid"
+        }
+      ],
+      "nullable": [false, false, false, false, false],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Text",
+          "Uuid"
+        ]
+      }
+    },
+    "query": "INSERT INTO file_versions (file_id, content, created_by)\n            VALUES ($1, $2, $3)\n            RETURNING id, file_id, content, created_at, created_by"
+  },
+  "883d3bc5da1e1d7c1cc7134b0a12e0c70df1a89c1ec91b94e47eff0fb51e6774": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "file_id",
+          "ordinal": 1,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "content",
+          "ordinal": 2,
+          "type_info": "Text"
+        },
+        {
+          "name": "completed",
+          "ordinal": 3,
+          "type_info": "Bool"
+        },
+        {
+          "name": "line_number",
+          "ordinal": 4,
+          "type_info": "Int4"
+        },
+        {
+          "name": "rank",
+          "ordinal": 5,
+          "type_info": "Float8"
+        },
+        {
+          "name": "score",
+          "ordinal": 6,
+          "type_info": "Float8"
+        },
+        {
+          "name": "created_at",
+          "ordinal": 7,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "updated_at",
+          "ordinal": 8,
+          "type_info": "Timestamptz"
+        }
+      ],
+      "nullable": [false, false, false, false, false, true, true, false, false],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT id, file_id, content, completed, line_number, rank, score, created_at, updated_at\n            FROM tasks\n            WHERE file_id = $1\n            ORDER BY line_number"
+  },
+  "939b4bd40d4defa70f5d2d59f6e9736d99c62ab3e1848c7dcd9bc4c8a13daacb": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "user_id",
+          "ordinal": 1,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "title",
+          "ordinal": 2,
+          "type_info": "Text"
+        },
+        {
+          "name": "content",
+          "ordinal": 3,
+          "type_info": "Text"
+        },
+        {
+          "name": "created_at",
+          "ordinal": 4,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "updated_at",
+          "ordinal": 5,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "last_accessed",
+          "ordinal": 6,
+          "type_info": "Timestamptz"
+        }
+      ],
+      "nullable": [false, false, false, false, false, false, false],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT id, user_id, title, content, created_at, updated_at, last_accessed\n            FROM markdown_files\n            WHERE id = $1"
+  },
+  "a75acf5eb0b07efcb57ccf1efb08e90334e2800ae11077c973dfd3c4be5e0b56": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "username",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "email",
+          "ordinal": 2,
+          "type_info": "Text"
+        },
+        {
+          "name": "password_hash",
+          "ordinal": 3,
+          "type_info": "Text"
+        },
+        {
+          "name": "created_at",
+          "ordinal": 4,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "updated_at",
+          "ordinal": 5,
+          "type_info": "Timestamptz"
+        }
+      ],
+      "nullable": [false, false, false, false, false, false],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      }
+    },
+    "query": "SELECT id, username, email, password_hash, created_at, updated_at\n            FROM users\n            WHERE email = $1"
+  },
+  "b3fbe66dc0a28a37a4ff5c7f4cfeba5e09dff4a05d39b3613a6c4e4b4c73d5e2": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "user_id",
+          "ordinal": 1,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "title",
+          "ordinal": 2,
+          "type_info": "Text"
+        },
+        {
+          "name": "content",
+          "ordinal": 3,
+          "type_info": "Text"
+        },
+        {
+          "name": "created_at",
+          "ordinal": 4,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "updated_at",
+          "ordinal": 5,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "last_accessed",
+          "ordinal": 6,
+          "type_info": "Timestamptz"
+        }
+      ],
+      "nullable": [false, false, false, false, false, false, false],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT id, user_id, title, content, created_at, updated_at, last_accessed\n            FROM markdown_files\n            WHERE user_id = $1\n            ORDER BY last_accessed DESC"
+  },
+  "d7bdcab29a35c321fcbebea8a37f4ca4e6f5e9ed26fe99ac0cf4ea9c9825b7b1": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "username",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "email",
+          "ordinal": 2,
+          "type_info": "Text"
+        },
+        {
+          "name": "password_hash",
+          "ordinal": 3,
+          "type_info": "Text"
+        },
+        {
+          "name": "created_at",
+          "ordinal": 4,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "updated_at",
+          "ordinal": 5,
+          "type_info": "Timestamptz"
+        }
+      ],
+      "nullable": [false, false, false, false, false, false],
+      "parameters": {
+        "Left": [
+          "Text",
+          "Text",
+          "Text"
+        ]
+      }
+    },
+    "query": "INSERT INTO users (username, email, password_hash)\n            VALUES ($1, $2, $3)\n            RETURNING id, username, email, password_hash, created_at, updated_at"
+  },
+  "fd31d4d3747bf67fb75e6704c75a8a5fe99bc4262d0de1d1d8fb3e30c1b93bcb": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "user_id",
+          "ordinal": 1,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "title",
+          "ordinal": 2,
+          "type_info": "Text"
+        },
+        {
+          "name": "content",
+          "ordinal": 3,
+          "type_info": "Text"
+        },
+        {
+          "name": "created_at",
+          "ordinal": 4,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "updated_at",
+          "ordinal": 5,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "last_accessed",
+          "ordinal": 6,
+          "type_info": "Timestamptz"
+        }
+      ],
+      "nullable": [false, false, false, false, false, false, false],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Text",
+          "Text"
+        ]
+      }
+    },
+    "query": "INSERT INTO markdown_files (user_id, title, content)\n            VALUES ($1, $2, $3)\n            RETURNING id, user_id, title, content, created_at, updated_at, last_accessed"
+  }
+} 

@@ -11,7 +11,7 @@ console = "0.15.8"
 either = "1.13.0"
 tuple-map = "0.4.0"
 # Web service dependencies
-axum = "0.7.3"
+axum = { version = "0.7.3", features = ["ws"] }
 tokio = { version = "1.35.1", features = ["full"] }
 tower = "0.4.13"
 tower-http = { version = "0.5.0", features = ["cors"] }
@@ -21,9 +21,29 @@ serde_json = "1.0.113"
 tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
 chrono = { version = "0.4.34", features = ["serde"] }
+# Database - with offline compile support
+sqlx = { version = "0.7", features = ["runtime-tokio", "tls-rustls", "postgres", "uuid", "chrono", "json", "migrate", "macros"], default-features = false }
+uuid = { version = "1.7.0", features = ["serde", "v4"] }
+futures = "0.3.30"
+dotenv = "0.15.0"
+async-trait = "0.1.77"
+tokio-stream = "0.1.14"
+# Authentication
+jsonwebtoken = "9.2.0"
+bcrypt = "0.15.0"
 
 [profile.dev]
 opt-level = 3
 debug = 1
 debug-assertions = false
 overflow-checks = false
+
+# Environment variables for SQLx offline mode
+# Set SQLX_OFFLINE=true to build without a database connection
+# cargo sqlx prepare --database-url "postgres://postgres:password@localhost:5432/todo_sorter"
+
+# Add features to make compilation faster
+[features]
+# Disable SQLx compile-time checking, use runtime checking instead
+runtime-check = []
+default = []

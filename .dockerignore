@@ -1,0 +1,28 @@
+# Version control
+.git/
+.gitignore
+
+# Build output
+/target/
+/web/dist/
+/web/node_modules/
+/node_modules/
+
+# Development files
+*.log
+*.png
+*.jpg
+*.jpeg
+.vscode/
+.cursor/
+.idea/
+
+# Don't ignore these critical files
+!Cargo.lock
+!Cargo.toml
+!sqlx-data.json
+!web/package.json
+!web/yarn.lock
+!web/package-lock.json
+!migrations/
+!.cargo/ 

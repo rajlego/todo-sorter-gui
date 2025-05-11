@@ -1,8 +1,8 @@
 use axum::{
-    extract::State,
+    extract::{Path, State},
     http::{header, StatusCode, Uri},
     response::{IntoResponse, Response},
-    routing::{get},
+    routing::{get, post},
     Json, Router,
 };
 use serde::{Deserialize, Serialize};
@@ -11,13 +11,29 @@ use std::sync::{Arc, Mutex};
 use tower_http::cors::{Any, CorsLayer};
 use tokio::net::TcpListener;
 use tokio::fs;
-use crate::asap_cpu::ASAP;
-use std::path::PathBuf;
+use crate::db::{Database, create_pool};
+use crate::auth::{AuthService, AuthUser, LoginRequest, RegisterRequest};
+use crate::realtime::{RealtimeService, ws_handler};
+use uuid::Uuid;
 
-// Type for storing our application state
+// Application state with all our services
 pub struct AppState {
-    // Store comparisons with task content (not IDs)
-    comparisons: Mutex<Vec<ContentComparison>>,
+    pub db: Database,
+    pub auth_service: Arc<AuthService>,
+    pub realtime_service: Arc<RealtimeService>,
+}
+
+// File API types
+#[derive(Debug, Deserialize)]
+pub struct CreateFileRequest {
+    title: String,
+    content: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct UpdateFileRequest {
+    title: Option<String>,
+    content: String,
 }
 
 // Task info using content as the primary identifier
@@ -76,6 +92,74 @@ pub struct RankingsResponse {
     rankings: Vec<RankedTask>,
 }
 
+// Simplified run_web_service function focusing on the key elements
+pub async fn run_web_service() {
+    // Initialize tracing for better logging
+    tracing_subscriber::fmt::init();
+    
+    // Create database connection
+    let db_pool = create_pool().await;
+    let db = Database::new(db_pool);
+    
+    // Initialize services
+    let auth_service = Arc::new(AuthService::new(db.clone()));
+    let realtime_service = Arc::new(RealtimeService::new());
+    
+    // Create the application state
+    let app_state = Arc::new(AppState {
+        db,
+        auth_service,
+        realtime_service,
+    });
+    
+    // Define CORS policy
+    let cors = CorsLayer::new()
+        .allow_origin(Any)
+        .allow_methods(Any)
+        .allow_headers(Any);
+    
+    // Get the static files directory from the environment or use the default
+    let static_dir = std::env::var("STATIC_DIR").unwrap_or_else(|_| "static".to_string());
+    tracing::info!("Serving static files from: {}", static_dir);
+    
+    // Create auth routes
+    let auth_routes = Router::new()
+        .route("/register", post(register_handler))
+        .route("/login", post(login_handler));
+    
+    // Create file routes (require authentication)
+    let file_routes = Router::new()
+        .route("/", post(create_file_handler))
+        .route("/:file_id", get(get_file_handler))
+        .route("/:file_id", post(update_file_handler))
+        .route("/:file_id/tasks", get(get_tasks_handler))
+        .route("/:file_id/comparisons", get(get_comparisons_handler))
+        .route("/:file_id/comparisons", post(add_comparison_handler))
+        .route("/:file_id/sync", get(file_sync_handler));
+    
+    // Create API router
+    let api_routes = Router::new()
+        .nest("/auth", auth_routes)
+        .nest("/files", file_routes)
+        .route("/health", get(health_check))
+        .with_state(app_state)
+        .layer(cors);
+    
+    // Create the application router
+    let app = Router::new()
+        .nest("/api", api_routes) // Move all API routes under /api prefix
+        .fallback(serve_static_file); // Serve static files for all other routes
+    
+    // Run the service
+    let port = std::env::var("PORT").unwrap_or_else(|_| "3000".to_string());
+    let port = port.parse::<u16>().expect("PORT must be a number");
+    let addr = std::net::SocketAddr::from(([0, 0, 0, 0], port));
+    tracing::info!("Listening on {}", addr);
+    
+    let listener = TcpListener::bind(addr).await.unwrap();
+    axum::serve(listener, app).await.unwrap();
+}
+
 // Simple function to serve static files
 async fn serve_static_file(uri: Uri) -> impl IntoResponse {
     let mut path = uri.path().trim_start_matches('/').to_string();
@@ -122,257 +206,269 @@ async fn serve_static_file(uri: Uri) -> impl IntoResponse {
     }
 }
 
-pub async fn run_web_service() {
-    // Initialize tracing for better logging
-    tracing_subscriber::fmt::init();
-    
-    // Create the application state
-    let app_state = Arc::new(AppState {
-        comparisons: Mutex::new(Vec::new()),
-    });
-    
-    // Define CORS policy to allow requests from frontend
-    let cors = CorsLayer::new()
-        .allow_origin(Any)
-        .allow_methods(Any)
-        .allow_headers(Any);
+// Auth handlers
+async fn register_handler(
+    State(state): State<Arc<AppState>>,
+    Json(req): Json<RegisterRequest>,
+) -> impl IntoResponse {
+    match state.auth_service.register(req).await {
+        Ok(response) => (StatusCode::CREATED, Json(response)).into_response(),
+        Err(status) => status.into_response(),
+    }
+}
 
-    // Get the static files directory from the environment or use the default
-    let static_dir = std::env::var("STATIC_DIR").unwrap_or_else(|_| "static".to_string());
-    tracing::info!("Serving static files from: {}", static_dir);
+async fn login_handler(
+    State(state): State<Arc<AppState>>,
+    Json(req): Json<LoginRequest>,
+) -> impl IntoResponse {
+    match state.auth_service.login(req).await {
+        Ok(response) => (StatusCode::OK, Json(response)).into_response(),
+        Err(status) => status.into_response(),
+    }
+}
 
-    // Create API router
-    let api_routes = Router::new()
-        .route("/health", get(health_check))
-        .route("/comparisons", get(get_comparisons).post(add_comparison))
-        .route("/rankings", get(get_rankings))
-        .route("/tasks", get(get_tasks).delete(delete_task))
-        .with_state(app_state)
-        .layer(cors);
+// File handlers
+async fn create_file_handler(
+    auth_user: AuthUser,
+    State(state): State<Arc<AppState>>,
+    Json(req): Json<CreateFileRequest>,
+) -> impl IntoResponse {
+    match state.db.create_file(auth_user.user_id, &req.title, &req.content).await {
+        Ok(file) => (StatusCode::CREATED, Json(file)).into_response(),
+        Err(_) => StatusCode::INTERNAL_SERVER_ERROR.into_response(),
+    }
+}
 
-    // Create our application router
-    let app = Router::new()
-        .nest("/api", api_routes) // Move all API routes under /api prefix
-        .fallback(serve_static_file); // Serve static files for all other routes
+async fn get_file_handler(
+    auth_user: AuthUser,
+    Path(file_id): Path<Uuid>,
+    State(state): State<Arc<AppState>>,
+) -> impl IntoResponse {
+    match state.db.get_file(file_id).await {
+        Ok(Some(file)) => {
+            // Check if user has access
+            if file.user_id != auth_user.user_id {
+                return StatusCode::FORBIDDEN.into_response();
+            }
+            Json(file).into_response()
+        },
+        Ok(None) => StatusCode::NOT_FOUND.into_response(),
+        Err(_) => StatusCode::INTERNAL_SERVER_ERROR.into_response(),
+    }
+}
 
-    // Run our service
-    let port = std::env::var("PORT").unwrap_or_else(|_| "3000".to_string());
-    let port = port.parse::<u16>().expect("PORT must be a number");
-    let addr = std::net::SocketAddr::from(([0, 0, 0, 0], port));
-    tracing::info!("Listening on {}", addr);
-    
-    let listener = TcpListener::bind(addr).await.unwrap();
-    axum::serve(listener, app).await.unwrap();
+async fn update_file_handler(
+    auth_user: AuthUser,
+    Path(file_id): Path<Uuid>,
+    State(state): State<Arc<AppState>>,
+    Json(req): Json<UpdateFileRequest>,
+) -> impl IntoResponse {
+    // First check if the file exists and belongs to this user
+    match state.db.get_file(file_id).await {
+        Ok(Some(file)) => {
+            if file.user_id != auth_user.user_id {
+                return StatusCode::FORBIDDEN.into_response();
+            }
+            
+            // Update the file
+            let title = req.title.unwrap_or(file.title);
+            match state.db.update_file(file_id, &title, &req.content).await {
+                Ok(updated) => {
+                    // Save a version history
+                    let _ = state.db.add_file_version(file_id, &req.content, auth_user.user_id).await;
+                    
+                    // Broadcast the update via WebSockets
+                    state.realtime_service.broadcast(crate::realtime::WsMessage::FileUpdate {
+                        file_id,
+                        content: req.content,
+                        user_id: auth_user.user_id,
+                    });
+                    
+                    Json(updated).into_response()
+                },
+                Err(_) => StatusCode::INTERNAL_SERVER_ERROR.into_response(),
+            }
+        },
+        Ok(None) => StatusCode::NOT_FOUND.into_response(),
+        Err(_) => StatusCode::INTERNAL_SERVER_ERROR.into_response(),
+    }
+}
+
+// WebSocket sync handler for real-time collaboration
+async fn file_sync_handler(
+    auth_user: AuthUser,
+    ws: axum::extract::WebSocketUpgrade,
+    Path(file_id): Path<Uuid>,
+    State(state): State<Arc<AppState>>,
+) -> impl IntoResponse {
+    // Check if the file exists and belongs to this user
+    match state.db.get_file(file_id).await {
+        Ok(Some(file)) => {
+            if file.user_id != auth_user.user_id {
+                return StatusCode::FORBIDDEN.into_response();
+            }
+            
+            // Handle WebSocket connection
+            ws_handler(
+                ws,
+                Path(file_id),
+                State((state.realtime_service.clone(), auth_user.user_id)),
+            ).await
+        },
+        Ok(None) => StatusCode::NOT_FOUND.into_response(),
+        Err(_) => StatusCode::INTERNAL_SERVER_ERROR.into_response(),
+    }
+}
+
+// Keep existing handlers for tasks and comparisons, or implement them similarly...
+async fn get_tasks_handler(
+    auth_user: AuthUser,
+    Path(file_id): Path<Uuid>,
+    State(state): State<Arc<AppState>>,
+) -> impl IntoResponse {
+    // First check if the file exists and belongs to this user
+    match state.db.get_file(file_id).await {
+        Ok(Some(file)) => {
+            if file.user_id != auth_user.user_id {
+                return StatusCode::FORBIDDEN.into_response();
+            }
+            
+            // Get tasks for this file
+            match state.db.get_tasks_for_file(file_id).await {
+                Ok(tasks) => Json(tasks).into_response(),
+                Err(_) => StatusCode::INTERNAL_SERVER_ERROR.into_response(),
+            }
+        },
+        Ok(None) => StatusCode::NOT_FOUND.into_response(),
+        Err(_) => StatusCode::INTERNAL_SERVER_ERROR.into_response(),
+    }
+}
+
+async fn get_comparisons_handler(
+    auth_user: AuthUser,
+    Path(file_id): Path<Uuid>,
+    State(state): State<Arc<AppState>>,
+) -> impl IntoResponse {
+    // First check if the file exists and belongs to this user
+    match state.db.get_file(file_id).await {
+        Ok(Some(file)) => {
+            if file.user_id != auth_user.user_id {
+                return StatusCode::FORBIDDEN.into_response();
+            }
+            
+            // Get comparisons for this file
+            match state.db.get_comparisons_for_file(file_id).await {
+                Ok(comparisons) => {
+                    // Convert to response format if needed
+                    let legacy_comparisons: Vec<LegacyComparison> = comparisons
+                        .iter()
+                        .map(|comp| {
+                            LegacyComparison {
+                                // Using UUIDs as temp IDs for backward compatibility
+                                task_a_id: comp.task_a_id.as_u128() as usize % 10000,
+                                task_b_id: comp.task_b_id.as_u128() as usize % 10000,
+                                winner_id: comp.winner_id.as_u128() as usize % 10000,
+                                timestamp: comp.created_at.to_rfc3339(),
+                            }
+                        })
+                        .collect();
+                    
+                    Json(ComparisonsResponse {
+                        comparisons: legacy_comparisons,
+                    }).into_response()
+                },
+                Err(_) => StatusCode::INTERNAL_SERVER_ERROR.into_response(),
+            }
+        },
+        Ok(None) => StatusCode::NOT_FOUND.into_response(),
+        Err(_) => StatusCode::INTERNAL_SERVER_ERROR.into_response(),
+    }
+}
+
+async fn add_comparison_handler(
+    auth_user: AuthUser,
+    Path(file_id): Path<Uuid>,
+    State(state): State<Arc<AppState>>,
+    Json(req): Json<AddComparisonRequest>,
+) -> impl IntoResponse {
+    // First check if the file exists and belongs to this user
+    match state.db.get_file(file_id).await {
+        Ok(Some(file)) => {
+            if file.user_id != auth_user.user_id {
+                return StatusCode::FORBIDDEN.into_response();
+            }
+            
+            // Get the tasks for this file to find the task IDs
+            match state.db.get_tasks_for_file(file_id).await {
+                Ok(tasks) => {
+                    // Find the tasks by content
+                    let task_a = tasks.iter().find(|t| t.content == req.task_a_content);
+                    let task_b = tasks.iter().find(|t| t.content == req.task_b_content);
+                    let winner = tasks.iter().find(|t| t.content == req.winner_content);
+                    
+                    // Make sure all tasks were found
+                    if let (Some(task_a), Some(task_b), Some(winner)) = (task_a, task_b, winner) {
+                        // Add the comparison
+                        match state.db.add_comparison(
+                            file_id, 
+                            task_a.id, 
+                            task_b.id, 
+                            winner.id
+                        ).await {
+                            Ok(_comparison) => {
+                                // Broadcast the update via WebSockets
+                                state.realtime_service.broadcast(crate::realtime::WsMessage::ComparisonAdded {
+                                    file_id,
+                                    comparison: crate::realtime::ComparisonUpdate {
+                                        task_a_content: req.task_a_content,
+                                        task_b_content: req.task_b_content,
+                                        winner_content: req.winner_content,
+                                    },
+                                });
+                                
+                                StatusCode::CREATED.into_response()
+                            },
+                            Err(_) => StatusCode::INTERNAL_SERVER_ERROR.into_response(),
+                        }
+                    } else {
+                        // One or more tasks not found
+                        StatusCode::BAD_REQUEST.into_response()
+                    }
+                },
+                Err(_) => StatusCode::INTERNAL_SERVER_ERROR.into_response(),
+            }
+        },
+        Ok(None) => StatusCode::NOT_FOUND.into_response(),
+        Err(_) => StatusCode::INTERNAL_SERVER_ERROR.into_response(),
+    }
 }
 
 // Health check endpoint
 async fn health_check() -> impl IntoResponse {
-    StatusCode::OK
-}
-
-// Get all comparisons
-async fn get_comparisons(State(state): State<Arc<AppState>>) -> impl IntoResponse {
-    let comparisons = state.comparisons.lock().unwrap();
-    
-    // Convert content comparisons to legacy format for backward compatibility
-    let mut content_to_id = HashMap::new();
-    let mut next_id = 1;
-    
-    let legacy_comparisons: Vec<LegacyComparison> = comparisons
-        .iter()
-        .map(|comp| {
-            // Assign IDs to task content
-            let task_a_id = *content_to_id
-                .entry(comp.task_a_content.clone())
-                .or_insert_with(|| {
-                    let id = next_id;
-                    next_id += 1;
-                    id
-                });
-            
-            let task_b_id = *content_to_id
-                .entry(comp.task_b_content.clone())
-                .or_insert_with(|| {
-                    let id = next_id;
-                    next_id += 1;
-                    id
-                });
-            
-            let winner_id = if comp.winner_content == comp.task_a_content {
-                task_a_id
-            } else {
-                task_b_id
-            };
-            
-            LegacyComparison {
-                task_a_id,
-                task_b_id,
-                winner_id,
-                timestamp: comp.timestamp.clone(),
-            }
-        })
-        .collect();
-    
-    Json(ComparisonsResponse {
-        comparisons: legacy_comparisons,
-    })
-}
-
-// Add a new comparison using task content
-async fn add_comparison(
-    State(state): State<Arc<AppState>>,
-    Json(payload): Json<AddComparisonRequest>,
-) -> impl IntoResponse {
-    // Validate that the winner content matches one of the tasks
-    if payload.winner_content != payload.task_a_content && 
-       payload.winner_content != payload.task_b_content {
-        return (StatusCode::BAD_REQUEST, Json(serde_json::json!({
-            "error": "Winner content must match either task_a_content or task_b_content"
-        }))).into_response();
-    }
-    
-    // Create the new comparison with content
-    let new_comparison = ContentComparison {
-        task_a_content: payload.task_a_content,
-        task_b_content: payload.task_b_content,
-        winner_content: payload.winner_content,
-        timestamp: chrono::Utc::now().to_rfc3339(),
-    };
-    
-    // Add the comparison to our list
-    let mut comparisons = state.comparisons.lock().unwrap();
-    comparisons.push(new_comparison.clone());
-    
-    // Convert to legacy format for response
-    let mut content_to_id = HashMap::new();
-    content_to_id.insert(new_comparison.task_a_content.clone(), 1);
-    content_to_id.insert(new_comparison.task_b_content.clone(), 2);
-    
-    let winner_id = if new_comparison.winner_content == new_comparison.task_a_content {
-        1
-    } else {
-        2
-    };
-    
-    let legacy_comparison = LegacyComparison {
-        task_a_id: 1,
-        task_b_id: 2,
-        winner_id,
-        timestamp: new_comparison.timestamp,
-    };
-    
-    (StatusCode::CREATED, Json(legacy_comparison)).into_response()
-}
-
-// Get rankings using the ASAP algorithm based on task content
-async fn get_rankings(State(state): State<Arc<AppState>>) -> impl IntoResponse {
-    let comparisons = state.comparisons.lock().unwrap();
-    
-    // Extract unique task contents from comparisons
-    let mut unique_tasks = HashSet::new();
-    for comp in comparisons.iter() {
-        unique_tasks.insert(comp.task_a_content.clone());
-        unique_tasks.insert(comp.task_b_content.clone());
-    }
-    
-    let tasks: Vec<String> = unique_tasks.into_iter().collect();
-    
-    // If we don't have enough tasks or comparisons, return an empty response
-    if tasks.len() < 2 || comparisons.is_empty() {
-        return Json(RankingsResponse { rankings: Vec::new() }).into_response();
-    }
-    
-    // Map task content to index
-    let content_to_index: HashMap<String, usize> = tasks
-        .iter()
-        .enumerate()
-        .map(|(i, content)| (content.clone(), i))
-        .collect();
-    
-    // Convert comparisons to matrix format for ASAP
-    let n = tasks.len();
-    let mut m = vec![vec![0; n]; n];
-    
-    for comp in comparisons.iter() {
-        if let (Some(&winner_idx), Some(&loser_idx)) = (
-            content_to_index.get(&comp.winner_content),
-            if comp.winner_content == comp.task_a_content {
-                content_to_index.get(&comp.task_b_content)
-            } else {
-                content_to_index.get(&comp.task_a_content)
-            },
-        ) {
-            m[winner_idx][loser_idx] += 1;
+    // Create a response with detailed environment information
+    let db_url = std::env::var("DATABASE_URL").unwrap_or_else(|_| "Not set".to_string());
+    let db_url_masked = if db_url != "Not set" {
+        // Mask the credentials in the DB URL for security
+        let parts: Vec<&str> = db_url.split('@').collect();
+        if parts.len() > 1 {
+            format!("**:**@{}", parts[1])
+        } else {
+            "**:**@**".to_string()
         }
-    }
+    } else {
+        "Not set".to_string()
+    };
     
-    // Run the ASAP algorithm to get ratings
-    let mut asap = ASAP::new(n);
-    let (_, _, ms_curr, _) = asap.run_asap(&m);
-    
-    // Create the rankings response
-    let mut scores: Vec<(String, f64)> = content_to_index
-        .iter()
-        .map(|(content, &index)| (content.clone(), ms_curr[index]))
-        .collect();
-    
-    // Sort by score (highest first)
-    scores.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
-    
-    // Build the final rankings
-    let rankings: Vec<RankedTask> = scores
-        .iter()
-        .enumerate()
-        .map(|(rank, (content, score))| RankedTask {
-            content: content.clone(),
-            score: *score,
-            rank: rank + 1, // 1-based ranking
-        })
-        .collect();
-    
-    Json(RankingsResponse { rankings }).into_response()
-}
-
-// Get all task contents from the comparisons
-async fn get_tasks(State(state): State<Arc<AppState>>) -> impl IntoResponse {
-    let comparisons = state.comparisons.lock().unwrap();
-    
-    // Extract unique task contents from comparisons
-    let mut unique_tasks = HashSet::new();
-    for comp in comparisons.iter() {
-        unique_tasks.insert(comp.task_a_content.clone());
-        unique_tasks.insert(comp.task_b_content.clone());
-    }
-    
-    let tasks: Vec<String> = unique_tasks.into_iter().collect();
-    
-    Json(serde_json::json!({
-        "tasks": tasks
-    })).into_response()
-}
-
-// Delete a task and all its comparisons
-async fn delete_task(
-    State(state): State<Arc<AppState>>,
-    Json(payload): Json<DeleteTaskRequest>,
-) -> impl IntoResponse {
-    let mut comparisons = state.comparisons.lock().unwrap();
-    
-    // Count comparisons before removal to verify deletion
-    let original_count = comparisons.len();
-    
-    // Remove any comparisons that include this task
-    comparisons.retain(|comp| {
-        comp.task_a_content != payload.content && 
-        comp.task_b_content != payload.content
+    let info = serde_json::json!({
+        "status": "ok",
+        "version": env!("CARGO_PKG_VERSION"),
+        "environment": std::env::var("ENVIRONMENT").unwrap_or_else(|_| "development".to_string()),
+        "database": {
+            "url_masked": db_url_masked,
+            "offline_mode": std::env::var("SQLX_OFFLINE").unwrap_or_else(|_| "false".to_string()),
+        },
+        "timestamp": chrono::Utc::now().to_rfc3339(),
     });
     
-    // Calculate how many comparisons were removed
-    let removed_count = original_count - comparisons.len();
-    
-    Json(serde_json::json!({
-        "removed_comparisons": removed_count,
-        "status": "success",
-        "message": format!("Task '{}' and all related comparisons removed", payload.content)
-    })).into_response()
+    (StatusCode::OK, Json(info)).into_response()
 } 

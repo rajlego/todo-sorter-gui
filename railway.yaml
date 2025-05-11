@@ -1,0 +1,36 @@
+# Railway configuration file
+services:
+  # The main web service
+  web:
+    # Use the Dockerfile for building
+    dockerfile: Dockerfile
+    # Set environment variables
+    env:
+      - PORT=3000
+      - STATIC_DIR=/app/web/dist
+      - SQLX_OFFLINE=true
+    # Define resource allocation
+    resources:
+      cpu: 1000  # 1 CPU
+      memory: 1024  # 1GB RAM
+    # Health check configuration
+    healthcheck:
+      path: /api/health
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Add a PostgreSQL database
+  postgres:
+    image: postgres:15
+    env:
+      - POSTGRES_PASSWORD=${PGPASSWORD}
+      - POSTGRES_USER=${PGUSER}
+      - POSTGRES_DB=${PGDATABASE}
+    # Ensure database persists
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+# Define the volumes to be created
+volumes:
+  postgres_data: {} 

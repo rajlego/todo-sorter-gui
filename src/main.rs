@@ -6,20 +6,22 @@ mod plot_ci;
 pub mod plot_ratings;
 mod sorter;
 mod web_service;
+mod db;
+mod auth;
+mod realtime;
+
+use std::env;
+use web_service::run_web_service;
 
 #[tokio::main]
 async fn main() {
-    // Check for command line arguments
-    let args: Vec<String> = std::env::args().collect();
-    
-    // If "api" argument is provided, run the web service
+    // Check command line args
+    let args: Vec<String> = env::args().collect();
     if args.len() > 1 && args[1] == "api" {
-        println!("Starting API server...");
-        web_service::run_web_service().await;
+        // Run web service mode
+        run_web_service().await;
     } else {
-        // Otherwise, run the original sorter CLI
-        if let Err(e) = sorter::main() {
-            eprintln!("Error: {}", e);
-        }
+        // Run CLI mode (not implemented for now)
+        println!("Please use 'api' command to start the web service");
     }
 }
