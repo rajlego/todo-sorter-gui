@@ -11,6 +11,10 @@ ENV ROLLUP_SKIP_NODE_RESOLUTION=true
 # Install dependencies with npm install (not npm ci)
 RUN npm install
 
+# Copy the shim generator script and run it
+COPY web/rollup-fix.js ./
+RUN chmod +x rollup-fix.js && node rollup-fix.js
+
 # Copy the rest of the frontend code
 COPY web/ ./
 
