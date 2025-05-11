@@ -155,4 +155,56 @@ export const healthCheck = async (): Promise<boolean> => {
 const generateId = (): string => {
   return Math.random().toString(36).substring(2, 15) + 
     Math.random().toString(36).substring(2, 15);
+};
+
+// Tasks API for managing tasks directly
+export const tasksApi = {
+  // Get all tasks
+  getAllTasks: async (): Promise<string[]> => {
+    logApiOperation('getAllTasks - starting');
+    try {
+      const response = await apiClient.get('/tasks');
+      logApiOperation('getAllTasks - received', response.data);
+      return response.data.tasks || [];
+    } catch (error) {
+      logApiOperation('getAllTasks', undefined, error);
+      throw error;
+    }
+  },
+  
+  // Delete a task by content
+  deleteTask: async (content: string): Promise<boolean> => {
+    logApiOperation('deleteTask - starting', { content });
+    try {
+      const response = await apiClient.delete('/tasks', { 
+        data: { content } 
+      });
+      logApiOperation('deleteTask - received', response.data);
+      return true;
+    } catch (error) {
+      logApiOperation('deleteTask', { content }, error);
+      throw error;
+    }
+  },
+  
+  // Register a new task
+  registerTask: async (content: string): Promise<boolean> => {
+    logApiOperation('registerTask - starting', { content });
+    try {
+      // To register a task, we create a dummy comparison where taskA and taskB are both the new task
+      // and the winner is also the new task
+      const payload = {
+        task_a_content: content,
+        task_b_content: content,
+        winner_content: content
+      };
+      
+      const response = await apiClient.post('/comparisons', payload);
+      logApiOperation('registerTask - received', response.data);
+      return true;
+    } catch (error) {
+      logApiOperation('registerTask', { content }, error);
+      throw error;
+    }
+  }
 }; 

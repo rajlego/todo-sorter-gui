@@ -1,11 +1,11 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import TaskSidebar from './components/TaskSidebar';
 import ComparisonView from './components/ComparisonView';
 import ComparisonLog from './components/ComparisonLog';
 import TaskRankings from './components/TaskRankings';
 import Editor from './components/Editor';
 import { extractTasks, comparisonsToCSV, generateId } from './utils/markdownUtils';
-import { comparisonsApi, healthCheck, rankingsApi } from './utils/apiClient';
+import { comparisonsApi, healthCheck, rankingsApi, tasksApi } from './utils/apiClient';
 import type { Comparison, Task } from './utils/markdownUtils';
 import type { RankedTask } from './utils/apiClient';
 
@@ -20,6 +20,12 @@ function App() {
   const [isApiConnected, setIsApiConnected] = useState<boolean>(false);
   const [rankedTasks, setRankedTasks] = useState<RankedTask[]>([]);
   const [isLoadingRankings, setIsLoadingRankings] = useState<boolean>(false);
+  const [previousTasks, setPreviousTasks] = useState<string[]>([]);
+
+  // To track when we last fetched rankings to avoid too many API calls
+  const lastRankingFetchRef = useRef<number>(0);
+  // To track pending markdown changes
+  const markdownDebounceTimeout = useRef<number | null>(null);
 
   // Extract tasks from markdown - this is now the single source of truth
   const tasks = extractTasks(markdownContent);
@@ -33,52 +39,74 @@ function App() {
     }
     
     try {
-      // Get latest rankings from API
-      const rankings = await fetchRankings();
+      // Get latest rankings from API if we don't have recent ones
+      let rankings = rankedTasks;
+      if (rankedTasks.length === 0 || Date.now() - lastRankingFetchRef.current > 5000) {
+        rankings = await fetchRankings();
+      }
+      
       if (rankings.length === 0) {
         console.error('No rankings available');
         return false;
       }
       
+      // Get current task contents from the editor
+      const currentTaskContents = tasks.map(task => task.content);
+      
       // Create a map of task content to ranking data
+      // Only include rankings for tasks that exist in the editor
       const contentRankMap = new Map();
-      rankings.forEach(apiTask => {
-        contentRankMap.set(apiTask.content, {
-          score: apiTask.score,
-          rank: apiTask.rank
+      rankings
+        .filter(task => currentTaskContents.includes(task.content))
+        .forEach(apiTask => {
+          contentRankMap.set(apiTask.content, {
+            score: apiTask.score,
+            rank: apiTask.rank
+          });
         });
-      });
+      
+      // Track if we've made any changes to avoid unnecessary rerenders
+      let hasChanges = false;
       
       // Update the markdown directly by matching content
       const lines = markdownContent.split('\n');
       const updatedLines = lines.map(line => {
-        // Check if line is a task
-        const taskMatch = line.match(/^-\s\[([ x])\]\s(.+?)(?:\s+\|\s+Rank:\s+\d+\s+\|\s+Score:\s+[-\d.]+)?$/);
+        // Check if line is a task - optimized regex that doesn't capture optional ranking part
+        const taskMatch = line.match(/^-\s\[([ x])\]\s(.+?)(?:\s+\|\s+Rank:.+)?$/);
         if (!taskMatch) return line;
         
         const content = taskMatch[2];
         const rankData = contentRankMap.get(content);
         
         if (rankData) {
-          console.log(`Found ranking for "${content}": rank=${rankData.rank}, score=${rankData.score}`);
           // Base task without ranking
           const baseTask = `- [${taskMatch[1]}] ${content}`;
-          // Return task with ranking appended
-          return `${baseTask} | Rank: ${rankData.rank} | Score: ${rankData.score.toFixed(2)}`;
+          // New task with ranking
+          const newLine = `${baseTask} | Rank: ${rankData.rank} | Score: ${rankData.score.toFixed(2)}`;
+          
+          // Only consider it a change if the line is actually different
+          if (newLine !== line) {
+            hasChanges = true;
+            return newLine;
+          }
+        } else {
+          // This is a task that doesn't have ranking data
+          // If it has ranking information, we should remove it
+          if (line.includes(' | Rank:')) {
+            hasChanges = true;
+            return `- [${taskMatch[1]}] ${content}`;
+          }
         }
         
         return line;
       });
       
-      const updatedMarkdown = updatedLines.join('\n');
-      console.log('Updated markdown sample:', updatedMarkdown.substring(0, 200));
-      
-      if (updatedMarkdown === markdownContent) {
-        console.warn('No changes made to markdown');
-        setApiError('No changes made to markdown - could not match tasks with rankings');
+      if (!hasChanges) {
+        console.log('No changes needed in markdown');
         return false;
       }
       
+      const updatedMarkdown = updatedLines.join('\n');
       setMarkdownContent(updatedMarkdown);
       localStorage.setItem('markdown-content', updatedMarkdown);
       setApiStatus('Markdown updated with latest rankings');
@@ -96,7 +124,22 @@ function App() {
     return updateMarkdownWithRankingsByContent();
   };
 
-  // Fetch rankings from API
+  // Handle changes in the editor with debouncing
+  const handleEditorChange = useCallback((value: string) => {
+    // Clear any pending timeout
+    if (markdownDebounceTimeout.current) {
+      clearTimeout(markdownDebounceTimeout.current);
+    }
+
+    // Set a new timeout to update the markdown after 500ms of inactivity
+    markdownDebounceTimeout.current = setTimeout(() => {
+      setMarkdownContent(value);
+      localStorage.setItem('markdown-content', value);
+      markdownDebounceTimeout.current = null;
+    }, 500) as unknown as number;
+  }, []);
+
+  // Fetch rankings from API with throttling
   const fetchRankings = async () => {
     console.log('fetchRankings called with:', {
       isApiConnected,
@@ -109,14 +152,30 @@ function App() {
       return [];
     }
     
+    // Throttle API calls to once every 2 seconds
+    const now = Date.now();
+    if (now - lastRankingFetchRef.current < 2000) {
+      console.log('Throttling ranking fetch, last fetch was', (now - lastRankingFetchRef.current) / 1000, 'seconds ago');
+      return rankedTasks; // Return existing rankings instead of fetching
+    }
+    
     setIsLoadingRankings(true);
+    lastRankingFetchRef.current = now;
+    
     try {
       console.log('Calling rankingsApi.getRankings()');
       const rankings = await rankingsApi.getRankings();
       console.log('Rankings received from API:', rankings);
-      setRankedTasks(rankings);
+      
+      // Filter rankings to only include tasks that exist in the editor
+      const currentTaskContents = tasks.map(task => task.content);
+      const filteredRankings = rankings.filter(rankedTask => 
+        currentTaskContents.includes(rankedTask.content)
+      );
+      
+      setRankedTasks(filteredRankings);
       setIsLoadingRankings(false);
-      return rankings;
+      return filteredRankings;
     } catch (error) {
       console.error('Failed to fetch rankings from API:', error);
       setApiError('Failed to fetch rankings from API');
@@ -124,6 +183,37 @@ function App() {
       return [];
     }
   };
+
+  // Add an effect to detect new tasks and update rankings accordingly
+  useEffect(() => {
+    // Skip if API is not connected or if we don't have any tasks
+    if (!isApiConnected || tasks.length === 0) {
+      return;
+    }
+
+    // Get current task contents
+    const currentTaskContents = tasks.map(task => task.content);
+    
+    // Check if we have any tasks that aren't in our rankings
+    const missingFromRankings = currentTaskContents.some(content => 
+      !rankedTasks.some(rankedTask => rankedTask.content === content)
+    );
+    
+    // Check if we have any rankings that aren't in our tasks (should be filtered out)
+    const extraInRankings = rankedTasks.some(rankedTask => 
+      !currentTaskContents.includes(rankedTask.content)
+    );
+    
+    // If we have inconsistencies, update the rankings
+    if (missingFromRankings || extraInRankings) {
+      console.log('Tasks and rankings are out of sync, refreshing rankings...');
+      // Add a small delay to avoid excessive updates
+      const timer = setTimeout(() => {
+        fetchRankings();
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [tasks.length, rankedTasks.length, isApiConnected]);
 
   // Check API connection on mount
   useEffect(() => {
@@ -188,16 +278,18 @@ function App() {
 
   // Update rankings when comparisons change
   useEffect(() => {
-    if (isApiConnected && comparisons.length > 0) {
-      fetchRankings();
+    // Use a reference to track if this effect already ran for this set of comparisons
+    const comparisonCount = comparisons.length;
+    
+    if (isApiConnected && comparisonCount > 0) {
+      // Add a small delay to avoid rapid re-renders
+      const timer = setTimeout(() => {
+        fetchRankings();
+      }, 300);
+      
+      return () => clearTimeout(timer);
     }
-  }, [comparisons, isApiConnected]);
-
-  // Handle changes in the editor
-  const handleEditorChange = useCallback((value: string) => {
-    setMarkdownContent(value);
-    localStorage.setItem('markdown-content', value);
-  }, []);
+  }, [comparisons.length, isApiConnected]); // Only depend on the length, not the whole array
 
   // Handle comparison completion
   const handleComparisonComplete = async (taskA: Task, taskB: Task, winner: Task) => {
@@ -274,6 +366,117 @@ function App() {
     link.click();
     document.body.removeChild(link);
   };
+
+  // Detect and handle task deletions
+  useEffect(() => {
+    // Skip if API is not connected or if we don't have previous tasks data
+    if (!isApiConnected) {
+      // Update the previous tasks array for next comparison
+      const currentTaskContents = tasks.map(task => task.content);
+      setPreviousTasks(currentTaskContents);
+      return;
+    }
+
+    const currentTaskContents = tasks.map(task => task.content);
+    
+    // Compare previous tasks with current tasks only if there's been an actual change
+    // to avoid unnecessary deletion API calls
+    if (previousTasks.length > 0 && 
+        JSON.stringify(previousTasks.sort()) !== JSON.stringify(currentTaskContents.sort())) {
+      
+      // Find tasks that were in the previous set but not in the current set (they were deleted)
+      const deletedTasks = previousTasks.filter(
+        prevContent => !currentTaskContents.includes(prevContent)
+      );
+      
+      // If we detected deleted tasks, remove them from the backend
+      if (deletedTasks.length > 0) {
+        console.log(`Detected ${deletedTasks.length} deleted tasks:`, deletedTasks);
+        
+        // Delete each removed task from the API
+        const deletePromises = deletedTasks.map(async (taskContent) => {
+          try {
+            const result = await tasksApi.deleteTask(taskContent);
+            console.log(`Task "${taskContent}" deletion result:`, result);
+            return result;
+          } catch (error) {
+            console.error(`Failed to delete task "${taskContent}":`, error);
+            return false;
+          }
+        });
+        
+        // When all deletions are processed, update the rankings
+        Promise.all(deletePromises).then(results => {
+          if (results.some(result => result)) {
+            // At least one task was successfully deleted
+            console.log("Successfully deleted tasks, refreshing rankings");
+            fetchRankings();
+          }
+        });
+      }
+    }
+    
+    // Update the previous tasks array for next comparison
+    // Only update if the content has actually changed
+    if (JSON.stringify(previousTasks) !== JSON.stringify(currentTaskContents)) {
+      setPreviousTasks(currentTaskContents);
+    }
+    
+    // Only depend on task length changes, not the entire tasks array
+    // to avoid unnecessary re-renders and API calls
+  }, [tasks.length, isApiConnected]);
+
+  // Detect and handle task additions
+  useEffect(() => {
+    // Skip if API is not connected
+    if (!isApiConnected) {
+      return;
+    }
+
+    // First, get the current task contents
+    const currentTaskContents = tasks.map(task => task.content);
+    
+    // If we don't have any tasks, or our previous task list is empty, just update the previous list
+    if (currentTaskContents.length === 0 || previousTasks.length === 0) {
+      setPreviousTasks(currentTaskContents);
+      return;
+    }
+    
+    // Find new tasks that were added
+    const newTasks = currentTaskContents.filter(
+      content => !previousTasks.includes(content)
+    );
+    
+    if (newTasks.length > 0) {
+      console.log(`Detected ${newTasks.length} new tasks:`, newTasks);
+      
+      // Register each new task with the API
+      const registerPromises = newTasks.map(async (taskContent) => {
+        try {
+          const result = await tasksApi.registerTask(taskContent);
+          console.log(`Task "${taskContent}" registration result:`, result);
+          return result;
+        } catch (error) {
+          console.error(`Failed to register task "${taskContent}":`, error);
+          return false;
+        }
+      });
+      
+      // When all registrations are processed, update the rankings
+      Promise.all(registerPromises).then(results => {
+        if (results.some(result => result)) {
+          // At least one task was successfully registered
+          console.log("Successfully registered new tasks, refreshing rankings");
+          // Add a delay to allow the backend to process the registrations
+          setTimeout(() => {
+            fetchRankings();
+          }, 1000);
+        }
+      });
+    }
+    
+    // Now continue with the rest of the function
+  }, [tasks.length, isApiConnected]);
 
   return (
     <div className="min-h-screen bg-gray-50">

@@ -58,6 +58,12 @@ pub struct AddComparisonRequest {
     winner_content: String,
 }
 
+// Request for deleting a task
+#[derive(Debug, Deserialize)]
+pub struct DeleteTaskRequest {
+    content: String,
+}
+
 #[derive(Debug, Serialize)]
 pub struct ComparisonsResponse {
     comparisons: Vec<LegacyComparison>,
@@ -88,6 +94,7 @@ pub async fn run_web_service() {
         .route("/health", get(health_check))
         .route("/comparisons", get(get_comparisons).post(add_comparison))
         .route("/rankings", get(get_rankings))
+        .route("/tasks", get(get_tasks).delete(delete_task))
         .with_state(app_state)
         .layer(cors);
 
@@ -267,4 +274,48 @@ async fn get_rankings(State(state): State<Arc<AppState>>) -> impl IntoResponse {
         .collect();
     
     Json(RankingsResponse { rankings }).into_response()
+}
+
+// Get all task contents from the comparisons
+async fn get_tasks(State(state): State<Arc<AppState>>) -> impl IntoResponse {
+    let comparisons = state.comparisons.lock().unwrap();
+    
+    // Extract unique task contents from comparisons
+    let mut unique_tasks = HashSet::new();
+    for comp in comparisons.iter() {
+        unique_tasks.insert(comp.task_a_content.clone());
+        unique_tasks.insert(comp.task_b_content.clone());
+    }
+    
+    let tasks: Vec<String> = unique_tasks.into_iter().collect();
+    
+    Json(serde_json::json!({
+        "tasks": tasks
+    })).into_response()
+}
+
+// Delete a task and all its comparisons
+async fn delete_task(
+    State(state): State<Arc<AppState>>,
+    Json(payload): Json<DeleteTaskRequest>,
+) -> impl IntoResponse {
+    let mut comparisons = state.comparisons.lock().unwrap();
+    
+    // Count comparisons before removal to verify deletion
+    let original_count = comparisons.len();
+    
+    // Remove any comparisons that include this task
+    comparisons.retain(|comp| {
+        comp.task_a_content != payload.content && 
+        comp.task_b_content != payload.content
+    });
+    
+    // Calculate how many comparisons were removed
+    let removed_count = original_count - comparisons.len();
+    
+    Json(serde_json::json!({
+        "removed_comparisons": removed_count,
+        "status": "success",
+        "message": format!("Task '{}' and all related comparisons removed", payload.content)
+    })).into_response()
 } 

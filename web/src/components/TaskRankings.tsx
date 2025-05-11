@@ -27,7 +27,22 @@ const TaskRankings: React.FC<TaskRankingsProps> = ({ tasks, comparisons }) => {
 
       try {
         const rankings = await rankingsApi.getRankings();
-        setRankedTasks(rankings);
+        
+        // Filter rankings to only include tasks that exist in the editor
+        const taskContents = tasks.map(task => task.content);
+        const filteredRankings = rankings.filter(rankedTask => 
+          taskContents.includes(rankedTask.content)
+        );
+        
+        // Renumber ranks to be sequential after filtering
+        const rerankedTasks = filteredRankings
+          .sort((a, b) => a.score > b.score ? -1 : 1) // Sort by score descending
+          .map((task, idx) => ({
+            ...task,
+            rank: idx + 1 // Re-assign ranks (1-based)
+          }));
+        
+        setRankedTasks(rerankedTasks);
       } catch (err) {
         console.error('Failed to fetch rankings:', err);
         setError('Failed to fetch rankings. Using local sorting as fallback.');
