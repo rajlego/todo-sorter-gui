@@ -1,8 +1,10 @@
 # Build frontend
-FROM node:18-alpine AS frontend-builder
+FROM node:18-slim AS frontend-builder
 WORKDIR /app/frontend
-# Install Alpine build dependencies needed for native modules
-RUN apk add --no-cache python3 make g++ libc6-compat
+# Install build dependencies needed for native modules
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends python3 make g++ && \
+    rm -rf /var/lib/apt/lists/*
 COPY web/package*.json ./
 RUN npm ci
 COPY web/ ./
