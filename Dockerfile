@@ -1,14 +1,12 @@
 # Build frontend
-FROM node:18-alpine AS frontend-builder
+FROM node:18 AS frontend-builder
 WORKDIR /app/frontend
 COPY web/package*.json ./
-# Install build dependencies needed for native modules
-RUN apk add --no-cache python3 make g++ 
-# Force npm to use the correct architecture for rollup
-ENV ROLLUP_SKIP_NODE_RESOLUTION=true
-# Install dependencies
+# Install dependencies 
 RUN npm ci
 COPY web/ ./
+# Set environment variables for the build
+ENV ROLLUP_SKIP_NODE_RESOLUTION=true
 RUN npm run build
 
 # Build backend
