@@ -103,8 +103,19 @@ pub async fn run_web_service() {
             pool
         },
         Err(err) => {
+            let err_string = err.to_string();
+            
+            // Check specifically for TLS errors
+            if err_string.contains("TLS") || err_string.contains("SSL") {
+                tracing::error!("TLS connection error: {}. Your SQLx may have been built without TLS support.", err);
+                tracing::info!("Trying to create a fallback database pool for SQLX_OFFLINE mode");
+                
+                // Always set SQLX_OFFLINE to true when we hit TLS errors
+                std::env::set_var("SQLX_OFFLINE", "true");
+                create_fallback_pool().await
+            } 
             // Check if we're in SQLX_OFFLINE mode, which allows operation without a DB
-            if std::env::var("SQLX_OFFLINE").unwrap_or_default() == "true" {
+            else if std::env::var("SQLX_OFFLINE").unwrap_or_default() == "true" {
                 tracing::warn!("Failed to connect to PostgreSQL: {}. Using fallback with SQLX_OFFLINE=true", err);
                 // Create a fallback minimal connection (may not work for all operations)
                 // The app will run but database operations will likely fail

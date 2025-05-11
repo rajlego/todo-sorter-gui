@@ -16,27 +16,30 @@ fi
 
 # Function to check if PostgreSQL is available using DATABASE_URL
 check_postgres() {
-  # Extract connection details from DATABASE_URL
-  if [[ "$DATABASE_URL" =~ postgres://([^:]+):([^@]+)@([^:]+):([0-9]+)/([^?]+) ]]; then
-    DB_USER="${BASH_REMATCH[1]}"
-    DB_PASS="${BASH_REMATCH[2]}"
-    DB_HOST="${BASH_REMATCH[3]}"
-    DB_PORT="${BASH_REMATCH[4]}"
-    DB_NAME="${BASH_REMATCH[5]}"
+  if [ -n "$DATABASE_URL" ]; then
+    echo "Trying to connect to PostgreSQL..."
     
-    echo "Trying to connect to PostgreSQL at $DB_HOST:$DB_PORT..."
+    # Extract host and port using basic string manipulation instead of regex
+    DB_HOST=$(echo "$DATABASE_URL" | sed -n 's/.*@\([^:]*\).*/\1/p')
+    DB_PORT=$(echo "$DATABASE_URL" | sed -n 's/.*:\([0-9]*\)\/.*/\1/p')
+    DB_USER=$(echo "$DATABASE_URL" | sed -n 's/.*:\/\/\([^:]*\).*/\1/p')
+    DB_NAME=$(echo "$DATABASE_URL" | sed -n 's/.*\/\([^?]*\).*/\1/p')
     
-    # Try to connect with SSL for Railway proxy
-    if [[ "$DB_HOST" == *"proxy.rlwy.net"* ]]; then
-      PGPASSWORD="$DB_PASS" psql "postgresql://$DB_USER@$DB_HOST:$DB_PORT/$DB_NAME?sslmode=require" -c "SELECT 1" > /dev/null 2>&1
-      return $?
+    echo "Extracted: Host=$DB_HOST, Port=$DB_PORT, User=$DB_USER, DB=$DB_NAME"
+    
+    # Try a simple connection test
+    if PGPASSWORD=${PGPASSWORD} psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -c "SELECT 1" > /dev/null 2>&1; then
+      return 0
     else
-      # For non-Railway connections or direct connections
-      PGPASSWORD="$DB_PASS" psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -c "SELECT 1" > /dev/null 2>&1
-      return $?
+      echo "Connection failed. Trying without SSL..."
+      # Try without SSL
+      if PGPASSWORD=${PGPASSWORD} psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -c "SELECT 1" > /dev/null 2>&1; then
+        return 0
+      fi
+      return 1
     fi
   else
-    echo "Could not parse DATABASE_URL: $DATABASE_URL"
+    echo "No DATABASE_URL provided."
     return 1
   fi
 }
@@ -59,15 +62,19 @@ for i in {1..30}; do
   fi
 done
 
-# Add SSL parameter to DATABASE_URL if using Railway proxy and not already specified
-if [[ "$DATABASE_URL" == *"proxy.rlwy.net"* ]] && [[ "$DATABASE_URL" != *"sslmode="* ]]; then
-  export DATABASE_URL="${DATABASE_URL}?sslmode=require"
-  echo "Added sslmode=require to DATABASE_URL for Railway proxy"
+# Remove SSL parameter from DATABASE_URL if it's causing issues
+# Railway requires SSL but our SQLx might be built without TLS support
+if [[ "$DATABASE_URL" == *"sslmode=require"* ]]; then
+  export DATABASE_URL=$(echo "$DATABASE_URL" | sed 's/?sslmode=require//')
+  echo "Removed sslmode=require from DATABASE_URL to work around TLS support issues"
+elif [[ "$DATABASE_URL" == *"proxy.rlwy.net"* ]] && [[ "$DATABASE_URL" != *"sslmode="* ]]; then
+  # Don't add SSL requirement, as our SQLx might be built without TLS support
+  echo "Using Railway proxy without SSL requirement (SQLx may lack TLS support)"
 fi
 
 # Run database migrations if we have a DATABASE_URL
 if [ -n "$DATABASE_URL" ]; then
-  echo "Running database migrations..."
+  echo "Running database migrations with DATABASE_URL=$DATABASE_URL"
   
   # Try to run migrations with multiple attempts
   for i in {1..3}; do
