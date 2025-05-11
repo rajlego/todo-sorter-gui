@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use sqlx::{postgres::PgPoolOptions, FromRow, PgPool, Pool, Postgres};
+use sqlx::{postgres::PgPoolOptions, FromRow, PgPool};
 use std::sync::Arc;
 use uuid::Uuid;
 use chrono::{DateTime, Utc};

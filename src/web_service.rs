@@ -14,7 +14,6 @@ use crate::db::{Database, create_pool, create_fallback_pool};
 use crate::auth::{AuthService, AuthUser, LoginRequest, RegisterRequest};
 use crate::realtime::{RealtimeService, ws_handler};
 use uuid::Uuid;
-use std::path::Path;
 
 // Application state with all our services
 pub struct AppState {
