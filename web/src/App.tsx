@@ -20,9 +20,153 @@ function App() {
   const [isApiConnected, setIsApiConnected] = useState<boolean>(false);
   const [rankedTasks, setRankedTasks] = useState<RankedTask[]>([]);
   const [isLoadingRankings, setIsLoadingRankings] = useState<boolean>(false);
+  const [registeredTasks, setRegisteredTasks] = useState<Set<string>>(new Set());
 
   // Extract tasks from markdown
   const tasks = extractTasks(markdownContent);
+  
+  // Get only tasks that are registered with the API
+  const getRegisteredTasks = useCallback(() => {
+    if (!isApiConnected) return tasks;
+    return tasks.filter(task => registeredTasks.has(task.content));
+  }, [tasks, registeredTasks, isApiConnected]);
+
+  // Fetch tasks from API and update registeredTasks
+  const fetchApiTasks = async () => {
+    if (!isApiConnected) return [];
+    
+    try {
+      const apiTasks = await tasksApi.getAllTasks();
+      console.log('Fetched tasks from API:', apiTasks);
+      
+      // Update registeredTasks with task contents
+      const taskContents = new Set(apiTasks.map(t => t.content));
+      setRegisteredTasks(taskContents);
+      
+      return apiTasks;
+    } catch (error) {
+      console.error('Failed to fetch tasks from API:', error);
+      return [];
+    }
+  };
+
+  // Direct content matching update method
+  const updateMarkdownWithRankingsByContent = async (): Promise<boolean> => {
+    console.log('Content matching markdown update starting...');
+    if (!isApiConnected) {
+      console.error('API not connected');
+      return false;
+    }
+    
+    try {
+      // Get latest rankings from API
+      const rankings = await fetchRankings();
+      if (rankings.length === 0) {
+        console.error('No rankings available');
+        return false;
+      }
+      
+      // Create a map of task content to ranking data
+      const contentRankMap = new Map();
+      rankings.forEach(apiTask => {
+        contentRankMap.set(apiTask.content, {
+          score: apiTask.score,
+          rank: apiTask.rank
+        });
+      });
+      
+      // Update the markdown directly by matching content
+      const lines = markdownContent.split('\n');
+      const updatedLines = lines.map(line => {
+        // Check if line is a task
+        const taskMatch = line.match(/^-\s\[([ x])\]\s(.+?)(?:\s+\|\s+Rank:\s+\d+\s+\|\s+Score:\s+[-\d.]+)?$/);
+        if (!taskMatch) return line;
+        
+        const content = taskMatch[2];
+        const rankData = contentRankMap.get(content);
+        
+        if (rankData) {
+          console.log(`Found ranking for "${content}": rank=${rankData.rank}, score=${rankData.score}`);
+          // Base task without ranking
+          const baseTask = `- [${taskMatch[1]}] ${content}`;
+          // Return task with ranking appended
+          return `${baseTask} | Rank: ${rankData.rank} | Score: ${rankData.score.toFixed(2)}`;
+        }
+        
+        return line;
+      });
+      
+      const updatedMarkdown = updatedLines.join('\n');
+      console.log('Updated markdown sample:', updatedMarkdown.substring(0, 200));
+      
+      if (updatedMarkdown === markdownContent) {
+        console.warn('No changes made to markdown');
+        setApiError('No changes made to markdown - could not match tasks with rankings');
+        return false;
+      }
+      
+      setMarkdownContent(updatedMarkdown);
+      localStorage.setItem('markdown-content', updatedMarkdown);
+      setApiStatus('Markdown updated with latest rankings');
+      return true;
+    } catch (error) {
+      console.error('Error in direct update:', error);
+      setApiError('Direct update failed: ' + (error.message || 'Unknown error'));
+      return false;
+    }
+  };
+
+  // Update markdown with rankings (now calls the content method)
+  const updateMarkdownWithRankings = async (): Promise<boolean> => {
+    console.log('Starting updateMarkdownWithRankings');
+    return updateMarkdownWithRankingsByContent();
+  };
+
+  // Detect and register new tasks with the API
+  const detectAndRegisterNewTasks = async (newMarkdown: string) => {
+    if (!isApiConnected) return;
+    
+    // Extract tasks from new markdown
+    const currentTasks = extractTasks(newMarkdown);
+    console.log('Current tasks in markdown:', currentTasks);
+    
+    try {
+      // Get existing tasks from API
+      const apiTasks = await tasksApi.getAllTasks();
+      const apiTaskContents = new Set(apiTasks.map(t => t.content));
+      console.log('Existing task contents in API:', apiTaskContents);
+      
+      // Find new tasks by comparing content
+      const newTasks = currentTasks.filter(task => !apiTaskContents.has(task.content));
+      
+      if (newTasks.length > 0) {
+        console.log(`Found ${newTasks.length} new tasks to register with API:`, newTasks);
+        
+        // Register each new task with the API
+        for (const task of newTasks) {
+          try {
+            await tasksApi.addTask({
+              content: task.content,
+              completed: task.completed,
+              line: task.line
+            });
+            console.log(`Successfully registered new task with API: "${task.content}"`);
+            
+            // Update registeredTasks
+            setRegisteredTasks(prev => new Set([...prev, task.content]));
+          } catch (error) {
+            console.error(`Failed to register task "${task.content}" with API:`, error);
+          }
+        }
+        
+        setApiStatus(`Registered ${newTasks.length} new tasks with API`);
+      } else {
+        console.log('No new tasks to register with API');
+      }
+    } catch (error) {
+      console.error('Error detecting and registering new tasks:', error);
+    }
+  };
 
   // Fetch rankings from API
   const fetchRankings = async () => {
@@ -53,120 +197,6 @@ function App() {
     }
   };
 
-  // Update markdown with rankings
-  const updateMarkdownWithRankings = async () => {
-    console.log('Starting updateMarkdownWithRankings');
-    
-    if (!isApiConnected) {
-      console.error('Cannot update markdown: API is not connected');
-      setApiError('Cannot update markdown with rankings: API is not connected');
-      return;
-    }
-    
-    try {
-      console.log('Fetching latest rankings from API...');
-      // Get latest rankings from API
-      const rankings = await fetchRankings();
-      console.log('Rankings fetched:', rankings);
-      
-      if (rankings.length === 0) {
-        console.error('No rankings available to update markdown');
-        setApiError('No rankings available to update markdown');
-        return;
-      }
-      
-      // Create a map of task ID to ranking data for quick lookup
-      const rankingMap = new Map<string, { score: number, rank: number }>();
-      rankings.forEach(task => {
-        const taskId = task.id; // Already in correct format from API
-        rankingMap.set(taskId, { 
-          score: task.score, 
-          rank: task.rank 
-        });
-        console.log(`Added ranking for ${taskId}: rank=${task.rank}, score=${task.score}`);
-      });
-      
-      console.log('Task IDs with rankings:', Array.from(rankingMap.keys()));
-      
-      // Log the current markdown content
-      console.log('Current markdown content:', markdownContent);
-      
-      // Get the tasks from the markdown
-      const extractedTasks = extractTasks(markdownContent);
-      console.log('Extracted tasks from markdown:', extractedTasks);
-      
-      // Simple approach: Just update the markdown content directly
-      let updatedMarkdown = markdownContent;
-      let anyChanges = false;
-      
-      // Using a simpler approach to update markdown
-      // For each task in the markdown, check if there's a ranking for it
-      extractedTasks.forEach(task => {
-        console.log(`Processing task ${task.id} with content: "${task.content}"`);
-        
-        const rankData = rankingMap.get(task.id);
-        if (rankData) {
-          console.log(`Found ranking data for ${task.id}:`, rankData);
-          
-          // Create the pattern to match this exact task line
-          // Escape regex special characters in the content
-          const escapedContent = task.content.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-          const taskPattern = new RegExp(`^(- \\[[ x]\\] ${escapedContent})(?:\\s+\\|\\s+Rank:\\s+\\d+\\s+\\|\\s+Score:\\s+[-\\d.]+)?$`, 'm');
-          
-          console.log(`Looking for pattern: ${taskPattern}`);
-          
-          if (taskPattern.test(updatedMarkdown)) {
-            console.log(`Task found in markdown, updating: "${task.content}"`);
-            
-            // Check if it already has ranking data
-            if (updatedMarkdown.includes(`- [${task.completed ? 'x' : ' '}] ${task.content} | Rank:`)) {
-              // Replace existing ranking info
-              updatedMarkdown = updatedMarkdown.replace(
-                new RegExp(`(- \\[${task.completed ? 'x' : ' '}\\] ${escapedContent})\\s+\\|\\s+Rank:\\s+\\d+\\s+\\|\\s+Score:\\s+[-\\d.]+`, 'm'),
-                `$1 | Rank: ${rankData.rank} | Score: ${rankData.score.toFixed(2)}`
-              );
-            } else {
-              // Add new ranking info
-              updatedMarkdown = updatedMarkdown.replace(
-                new RegExp(`(- \\[${task.completed ? 'x' : ' '}\\] ${escapedContent})`, 'm'),
-                `$1 | Rank: ${rankData.rank} | Score: ${rankData.score.toFixed(2)}`
-              );
-            }
-            anyChanges = true;
-          } else {
-            console.log(`Task NOT found in markdown: "${task.content}"`);
-          }
-        } else {
-          console.log(`No ranking data found for task ${task.id}`);
-        }
-      });
-      
-      if (!anyChanges) {
-        console.warn('Warning: No changes made to markdown content');
-      }
-      
-      // Log the first 200 chars of both markdowns to see if there's a difference
-      console.log('Original markdown (first 200 chars):', markdownContent.substring(0, 200));
-      console.log('Updated markdown (first 200 chars):', updatedMarkdown.substring(0, 200));
-      
-      if (updatedMarkdown === markdownContent) {
-        console.warn('Warning: Updated markdown is identical to original markdown');
-        setApiError('No changes made to markdown - could not match tasks with rankings');
-        return;
-      }
-      
-      // Update markdown content
-      setMarkdownContent(updatedMarkdown);
-      localStorage.setItem('markdown-content', updatedMarkdown);
-      
-      setApiStatus('Markdown updated with latest rankings');
-      console.log('Markdown update complete');
-    } catch (error) {
-      console.error('Failed to update markdown with rankings:', error);
-      setApiError('Failed to update markdown with rankings: ' + (error.message || 'Unknown error'));
-    }
-  };
-
   // Sync local tasks to API
   const syncTasksToAPI = async (localTasks: Task[]) => {
     if (!isApiConnected || localTasks.length === 0) return;
@@ -174,12 +204,13 @@ function App() {
     try {
       // Get existing tasks from API
       const apiTasks = await tasksApi.getAllTasks();
-      const apiTaskIds = apiTasks.map(t => t.id);
+      const apiTaskContents = new Set(apiTasks.map(t => t.content));
       
       // Register any new tasks with the API
+      let newTasksCount = 0;
       for (const task of localTasks) {
         // Skip if this task is already in the API
-        if (apiTaskIds.includes(task.id)) continue;
+        if (apiTaskContents.has(task.content)) continue;
         
         try {
           await tasksApi.addTask({
@@ -187,12 +218,21 @@ function App() {
             completed: task.completed,
             line: task.line
           });
+          apiTaskContents.add(task.content);
+          newTasksCount++;
         } catch (error) {
           console.error(`Failed to register task ${task.id} with API:`, error);
         }
       }
       
-      setApiStatus('Tasks synchronized with API');
+      // Update registeredTasks
+      setRegisteredTasks(apiTaskContents);
+      
+      if (newTasksCount > 0) {
+        setApiStatus(`Synchronized ${newTasksCount} new tasks with API`);
+      } else {
+        setApiStatus('Tasks synchronized with API');
+      }
     } catch (error) {
       console.error('Failed to sync tasks with API:', error);
       setApiError('Failed to sync tasks with API');
@@ -209,8 +249,8 @@ function App() {
           setApiStatus('Connected to Railway API');
           
           try {
-            // Get existing tasks from API
-            const apiTasks = await tasksApi.getAllTasks();
+            // Get existing tasks from API and update registeredTasks
+            const apiTasks = await fetchApiTasks();
             
             // Sync local tasks with API
             await syncTasksToAPI(tasks);
@@ -284,7 +324,10 @@ function App() {
   const handleEditorChange = useCallback((value: string) => {
     setMarkdownContent(value);
     localStorage.setItem('markdown-content', value);
-  }, []);
+    
+    // Detect and register any new tasks that were added
+    detectAndRegisterNewTasks(value);
+  }, [isApiConnected]);
 
   // Handle comparison completion
   const handleComparisonComplete = async (taskA: Task, taskB: Task, winner: Task) => {
@@ -301,14 +344,20 @@ function App() {
       timestamp: new Date()
     };
     
+    // Flag to track if we saved to API successfully
+    let apiSaveSuccess = false;
+    
     // If API is connected, send comparison to API
     if (isApiConnected) {
       try {
+        console.log('Sending comparison to API...');
         await comparisonsApi.addComparison({
           taskA: completeTaskA,
           taskB: completeTaskB,
           winner: completeWinner
         });
+        console.log('Comparison saved to API successfully');
+        apiSaveSuccess = true;
       } catch (error) {
         console.error('Failed to save comparison to API:', error);
         setApiError('Failed to save comparison to API, using local storage');
@@ -321,6 +370,26 @@ function App() {
       localStorage.setItem('comparisons', JSON.stringify(updatedComparisons));
       return updatedComparisons;
     });
+    
+    // After saving comparison, update the rankings
+    // Only if API save was successful
+    if (apiSaveSuccess) {
+      // Use a timeout to allow the API to update its rankings
+      console.log('Scheduling automatic markdown update...');
+      setTimeout(async () => {
+        try {
+          console.log('Automatically updating markdown with rankings after comparison...');
+          const success = await updateMarkdownWithRankingsByContent();
+          if (success) {
+            console.log('Automatic markdown update successful');
+          } else {
+            console.warn('Automatic markdown update did not make any changes');
+          }
+        } catch (updateError) {
+          console.error('Failed to auto-update markdown with rankings:', updateError);
+        }
+      }, 1000); // Use a slightly longer timeout to ensure the backend has processed the comparison
+    }
   };
 
   // Handle export to CSV
@@ -362,34 +431,6 @@ function App() {
         </div>
       </header>
       
-      {/* Navigation Tabs */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-        <div className="border-b border-gray-200">
-          <nav className="-mb-px flex space-x-8">
-            <button
-              onClick={() => setActiveTab('editor-compare')}
-              className={`py-2 px-1 border-b-2 ${
-                activeTab === 'editor-compare'
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              } transition`}
-            >
-              Editor & Compare
-            </button>
-            <button
-              onClick={() => setActiveTab('log')}
-              className={`py-2 px-1 border-b-2 ${
-                activeTab === 'log'
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              } transition`}
-            >
-              Comparison Log
-            </button>
-          </nav>
-        </div>
-      </div>
-      
       {/* Debug Info (development only) */}
       {process.env.NODE_ENV !== 'production' && (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2 bg-gray-100 text-xs overflow-x-auto">
@@ -404,6 +445,11 @@ function App() {
               <h3 className="font-bold mt-3">Tasks from Markdown:</h3>
               <pre className="bg-white p-2 rounded mt-1">
                 {JSON.stringify(tasks, null, 2)}
+              </pre>
+              
+              <h3 className="font-bold mt-3">Registered Tasks:</h3>
+              <pre className="bg-white p-2 rounded mt-1">
+                {JSON.stringify(Array.from(registeredTasks), null, 2)}
               </pre>
               
               <h3 className="font-bold mt-3">Rankings:</h3>
@@ -466,6 +512,10 @@ function App() {
                         console.log(`Registered task: ${task.content}`);
                       }
                       console.log('Task sync complete');
+                      
+                      // Update registeredTasks
+                      setRegisteredTasks(new Set(tasks.map(t => t.content)));
+                      
                       alert('Task sync complete. You may need to refresh the page to see changes.');
                     } catch (error) {
                       console.error('Error syncing tasks:', error);
@@ -480,6 +530,34 @@ function App() {
           </details>
         </div>
       )}
+      
+      {/* Navigation Tabs */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+        <div className="border-b border-gray-200">
+          <nav className="-mb-px flex space-x-8">
+            <button
+              onClick={() => setActiveTab('editor-compare')}
+              className={`py-2 px-1 border-b-2 ${
+                activeTab === 'editor-compare'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              } transition`}
+            >
+              Editor & Compare
+            </button>
+            <button
+              onClick={() => setActiveTab('log')}
+              className={`py-2 px-1 border-b-2 ${
+                activeTab === 'log'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              } transition`}
+            >
+              Comparison Log
+            </button>
+          </nav>
+        </div>
+      </div>
       
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
@@ -526,65 +604,12 @@ function App() {
                 {process.env.NODE_ENV !== 'production' && (
                   <button
                     onClick={async () => {
-                      console.log('Direct content matching markdown update...');
-                      if (!isApiConnected) {
-                        console.error('API not connected');
-                        return;
-                      }
-                      
-                      try {
-                        // Get latest rankings from API
-                        const rankings = await fetchRankings();
-                        if (rankings.length === 0) {
-                          console.error('No rankings available');
-                          return;
-                        }
-                        
-                        // Create a map of task content to ranking data
-                        const contentRankMap = new Map();
-                        rankings.forEach(apiTask => {
-                          contentRankMap.set(apiTask.content, {
-                            score: apiTask.score,
-                            rank: apiTask.rank
-                          });
-                        });
-                        
-                        // Update the markdown directly by matching content
-                        const lines = markdownContent.split('\n');
-                        const updatedLines = lines.map(line => {
-                          // Check if line is a task
-                          const taskMatch = line.match(/^-\s\[([ x])\]\s(.+?)(?:\s+\|\s+Rank:\s+\d+\s+\|\s+Score:\s+[-\d.]+)?$/);
-                          if (!taskMatch) return line;
-                          
-                          const content = taskMatch[2];
-                          const rankData = contentRankMap.get(content);
-                          
-                          if (rankData) {
-                            console.log(`Found ranking for "${content}": rank=${rankData.rank}, score=${rankData.score}`);
-                            // Base task without ranking
-                            const baseTask = `- [${taskMatch[1]}] ${content}`;
-                            // Return task with ranking appended
-                            return `${baseTask} | Rank: ${rankData.rank} | Score: ${rankData.score.toFixed(2)}`;
-                          }
-                          
-                          return line;
-                        });
-                        
-                        const updatedMarkdown = updatedLines.join('\n');
-                        console.log('Updated markdown sample:', updatedMarkdown.substring(0, 200));
-                        
-                        if (updatedMarkdown === markdownContent) {
-                          console.warn('No changes made to markdown');
-                          setApiError('No changes made to markdown - could not match tasks with rankings');
-                          return;
-                        }
-                        
-                        setMarkdownContent(updatedMarkdown);
-                        localStorage.setItem('markdown-content', updatedMarkdown);
-                        setApiStatus('Markdown updated with latest rankings (direct content match)');
-                      } catch (error) {
-                        console.error('Error in direct update:', error);
-                        setApiError('Direct update failed: ' + (error.message || 'Unknown error'));
+                      console.log('Testing direct content matching update...');
+                      const success = await updateMarkdownWithRankingsByContent();
+                      if (success) {
+                        console.log('Direct update successful');
+                      } else {
+                        console.error('Direct update failed');
                       }
                     }}
                     className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
@@ -599,7 +624,11 @@ function App() {
             {/* Right side: Comparison View and Rankings */}
             <div className="lg:col-span-6 space-y-6">
               <div>
-                <ComparisonView tasks={tasks} onComparisonComplete={handleComparisonComplete} />
+                {/* Use only registered tasks for comparison */}
+                <ComparisonView 
+                  tasks={getRegisteredTasks()} 
+                  onComparisonComplete={handleComparisonComplete} 
+                />
               </div>
               <div>
                 <TaskRankings tasks={tasks} comparisons={comparisons} />
