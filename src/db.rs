@@ -105,7 +105,6 @@ pub async fn create_pool() -> Result<PgPool, sqlx::Error> {
     for attempt in 1..=5 {
         match PgPoolOptions::new()
             .max_connections(5)
-            .connect_timeout(std::time::Duration::from_secs(30))
             .connect(&database_url)
             .await
         {
@@ -130,23 +129,14 @@ pub async fn create_pool() -> Result<PgPool, sqlx::Error> {
     Err(last_error.unwrap())
 }
 
-// Fallback in-memory database for when PostgreSQL is not available (especially in Railway deployments)
+// Fallback database for when PostgreSQL is not available (especially in Railway deployments)
 pub async fn create_fallback_pool() -> PgPool {
-    tracing::warn!("Using in-memory SQLite database as a fallback");
+    tracing::warn!("Using minimal fallback database (may not work for all operations)");
     
-    // Create a memory-based SQLite connection to avoid crashing
-    let sqlite_pool = sqlx::sqlite::SqlitePoolOptions::new()
-        .max_connections(5)
-        .connect("sqlite::memory:")
-        .await
-        .expect("Failed to create in-memory SQLite database");
-    
-    // Fake PostgreSQL connection as we can't actually return a SQLite pool where PgPool is expected
-    // This isn't ideal, but it prevents app crashes when the database is unreachable
-    // Using type coercion isn't possible here, so we rely on the SQLX_OFFLINE mode
+    // Simply create a minimal Postgres connection that won't be used for actual operations
+    // This relies on SQLX_OFFLINE mode to allow compilation without a working connection
     PgPoolOptions::new()
         .max_connections(1)
-        .connect_timeout(std::time::Duration::from_secs(1))
         .connect("postgres://postgres:password@localhost:5432/postgres")
         .await
         .unwrap_or_else(|_| {
