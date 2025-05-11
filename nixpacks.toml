@@ -3,10 +3,11 @@ nixPkgs = ["gcc", "binutils", "openssl", "pkg-config", "nodejs-18_x", "yarn"]
 
 [phases.build]
 cmds = [
-  "cd web && yarn install && yarn build && cd ..",
-  "mkdir -p static && cp -r web/dist/* static/",
+  "cd web && yarn install && yarn build",
+  "mkdir -p /app/static",
+  "cp -r web/dist/* /app/static/",
   "SQLX_OFFLINE=true RUSTC_VERSION=1.82.0 cargo build --release"
 ]
 
 [start]
-cmd = "SQLX_OFFLINE=true STATIC_DIR=static ./target/release/sorter api" 
+cmd = "SQLX_OFFLINE=true STATIC_DIR=/app/static ./target/release/sorter api" 

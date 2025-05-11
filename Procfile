@@ -1,1 +1,1 @@
-web: ./target/release/sorter api 
+web: SQLX_OFFLINE=true STATIC_DIR=/app/static ./target/release/sorter api 

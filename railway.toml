@@ -1,14 +1,22 @@
 [build]
-builder = "DOCKERFILE"
-dockerfilePath = "Dockerfile"
+builder = "nixpacks"
 
 [deploy]
-numReplicas = 1
-sleepApplication = false
+startCommand = "SQLX_OFFLINE=true STATIC_DIR=/app/static ./target/release/sorter api"
+healthcheckPath = "/api/health"
+healthcheckTimeout = 100
 restartPolicyType = "on_failure"
-startCommand = "/app/target/release/sorter api"
+autostart = true
+
+# Railway automatically injects DATABASE_URL environment variable
+# when you provision a PostgreSQL database
+
+[services.web]
+healthcheck = "/api/health"
+port = 3000
 
 # Environment variables
 [variables]
 PORT = "3000"
-STATIC_DIR = "/app/web/dist"
+STATIC_DIR = "/app/static"
+SQLX_OFFLINE = "true"

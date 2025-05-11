@@ -1,12 +1,10 @@
 {
   "$schema": "https://railway.app/railway.schema.json",
   "build": {
-    "builder": "NIXPACKS",
-    "buildCommand": "cd web && yarn install && yarn build && cd .. && mkdir -p static && cp -r web/dist/* static/"
+    "builder": "NIXPACKS"
   },
   "deploy": {
     "numReplicas": 1,
-    "startCommand": "SQLX_OFFLINE=true STATIC_DIR=static ./target/release/sorter api",
     "healthcheckPath": "/api/health",
     "healthcheckTimeout": 100,
     "restartPolicyType": "ON_FAILURE",
@@ -14,6 +12,6 @@
   },
   "variables": {
     "SQLX_OFFLINE": "true",
-    "STATIC_DIR": "static"
+    "STATIC_DIR": "/app/static"
   }
 } 
