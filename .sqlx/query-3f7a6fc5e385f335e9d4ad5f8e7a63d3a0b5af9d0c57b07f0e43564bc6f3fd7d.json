@@ -1,0 +1,44 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id::text, task_a_id::text, task_b_id::text, winner_id::text, timestamp FROM comparisons ORDER BY timestamp DESC",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "task_a_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "task_b_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "winner_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "timestamp",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "3f7a6fc5e385f335e9d4ad5f8e7a63d3a0b5af9d0c57b07f0e43564bc6f3fd7d"
+} 

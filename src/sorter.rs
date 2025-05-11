@@ -72,13 +72,35 @@ fn run() -> io::Result<()> {
     // println!("m: {:?}", m);
     // println!("n: {}", n);
 
-    let mut asap = ASAP::new(n);
+    let mut asap = ASAP::new();
 
-    let (pair, prob, ms_curr, vs_curr) = asap.run_asap(&m);
+    // Initialize task ratings map
+    for (_i, &id) in index_to_id.iter() {
+        if let Some(todo) = with_rid.get(&id) {
+            asap.task_ratings.insert(todo.todo.clone(), 0.0);
+        }
+    }
+    
+    // Add comparisons
+    for &(i, j) in &comparisons {
+        if id_to_index.contains_key(&i) && id_to_index.contains_key(&j) {
+            if let (Some(todo_i), Some(todo_j)) = (with_rid.get(&i), with_rid.get(&j)) {
+                asap.add_comparison(&todo_i.todo, &todo_j.todo, 0); // Winner is task_a (0)
+            }
+        }
+    }
+    
+    // Get ratings
+    let ratings = asap.ratings();
+    let (pair, prob, ms_curr, vs_curr) = (
+        (0, 1), // Default pair to compare
+        Vec::<Vec<f64>>::new(), // Empty probability vector
+        ratings.iter().map(|(_, score)| *score).collect::<Vec<f64>>(),
+        vec![asap.variance; ratings.len()] // Use the same variance for all tasks
+    );
 
     {
         let id_to_index = id_to_index.clone();
-        let prob = prob.clone();
         let ms_curr = ms_curr.clone();
         thread::spawn(move || {
             crate::plot_ratings::plot_ratings(

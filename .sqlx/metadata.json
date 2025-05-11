@@ -1,0 +1,272 @@
+{
+  "db_name": "PostgreSQL",
+  "statements": [
+    {
+      "query": "SELECT id::text, content, completed, created_at, updated_at FROM tasks ORDER BY created_at DESC",
+      "describe": {
+        "columns": [
+          {
+            "ordinal": 0,
+            "name": "id",
+            "type_info": "Text"
+          },
+          {
+            "ordinal": 1,
+            "name": "content",
+            "type_info": "Text"
+          },
+          {
+            "ordinal": 2,
+            "name": "completed",
+            "type_info": "Bool"
+          },
+          {
+            "ordinal": 3,
+            "name": "created_at",
+            "type_info": "Timestamptz"
+          },
+          {
+            "ordinal": 4,
+            "name": "updated_at",
+            "type_info": "Timestamptz"
+          }
+        ],
+        "parameters": {
+          "Left": []
+        },
+        "nullable": [
+          false,
+          false,
+          false,
+          false,
+          false
+        ]
+      }
+    },
+    {
+      "query": "SELECT id::text, task_a_id::text, task_b_id::text, winner_id::text, timestamp FROM comparisons ORDER BY timestamp DESC",
+      "describe": {
+        "columns": [
+          {
+            "ordinal": 0,
+            "name": "id",
+            "type_info": "Text"
+          },
+          {
+            "ordinal": 1,
+            "name": "task_a_id",
+            "type_info": "Text"
+          },
+          {
+            "ordinal": 2,
+            "name": "task_b_id",
+            "type_info": "Text"
+          },
+          {
+            "ordinal": 3,
+            "name": "winner_id",
+            "type_info": "Text"
+          },
+          {
+            "ordinal": 4,
+            "name": "timestamp",
+            "type_info": "Timestamptz"
+          }
+        ],
+        "parameters": {
+          "Left": []
+        },
+        "nullable": [
+          false,
+          false,
+          false,
+          false,
+          false
+        ]
+      }
+    },
+    {
+      "query": "SELECT id::text, content, completed, created_at, updated_at FROM tasks WHERE content = $1",
+      "describe": {
+        "columns": [
+          {
+            "ordinal": 0,
+            "name": "id",
+            "type_info": "Text"
+          },
+          {
+            "ordinal": 1,
+            "name": "content",
+            "type_info": "Text"
+          },
+          {
+            "ordinal": 2,
+            "name": "completed",
+            "type_info": "Bool"
+          },
+          {
+            "ordinal": 3,
+            "name": "created_at",
+            "type_info": "Timestamptz"
+          },
+          {
+            "ordinal": 4,
+            "name": "updated_at",
+            "type_info": "Timestamptz"
+          }
+        ],
+        "parameters": {
+          "Left": [
+            "Text"
+          ]
+        },
+        "nullable": [
+          false,
+          false,
+          false,
+          false,
+          false
+        ]
+      }
+    },
+    {
+      "query": "INSERT INTO tasks (id, content, completed, created_at, updated_at) VALUES ($1, $2, $3, $4, $5) RETURNING id::text, content, completed, created_at, updated_at",
+      "describe": {
+        "columns": [
+          {
+            "ordinal": 0,
+            "name": "id",
+            "type_info": "Text"
+          },
+          {
+            "ordinal": 1,
+            "name": "content",
+            "type_info": "Text"
+          },
+          {
+            "ordinal": 2,
+            "name": "completed",
+            "type_info": "Bool"
+          },
+          {
+            "ordinal": 3,
+            "name": "created_at",
+            "type_info": "Timestamptz"
+          },
+          {
+            "ordinal": 4,
+            "name": "updated_at",
+            "type_info": "Timestamptz"
+          }
+        ],
+        "parameters": {
+          "Left": [
+            "Uuid",
+            "Text",
+            "Bool",
+            "Timestamptz",
+            "Timestamptz"
+          ]
+        },
+        "nullable": [
+          false,
+          false,
+          false,
+          false,
+          false
+        ]
+      }
+    },
+    {
+      "query": "INSERT INTO comparisons (id, task_a_id, task_b_id, winner_id, timestamp) VALUES ($1, $2, $3, $4, NOW()) RETURNING id::text, task_a_id::text, task_b_id::text, winner_id::text, timestamp",
+      "describe": {
+        "columns": [
+          {
+            "ordinal": 0,
+            "name": "id",
+            "type_info": "Text"
+          },
+          {
+            "ordinal": 1,
+            "name": "task_a_id",
+            "type_info": "Text"
+          },
+          {
+            "ordinal": 2,
+            "name": "task_b_id",
+            "type_info": "Text"
+          },
+          {
+            "ordinal": 3,
+            "name": "winner_id",
+            "type_info": "Text"
+          },
+          {
+            "ordinal": 4,
+            "name": "timestamp",
+            "type_info": "Timestamptz"
+          }
+        ],
+        "parameters": {
+          "Left": [
+            "Uuid",
+            "Uuid",
+            "Uuid",
+            "Uuid"
+          ]
+        },
+        "nullable": [
+          false,
+          false,
+          false,
+          false,
+          false
+        ]
+      }
+    },
+    {
+      "query": "DELETE FROM tasks WHERE id = $1",
+      "describe": {
+        "columns": [],
+        "parameters": {
+          "Left": [
+            "Uuid"
+          ]
+        },
+        "nullable": []
+      }
+    },
+    {
+      "query": "DELETE FROM comparisons WHERE task_a_id = $1 OR task_b_id = $1 OR winner_id = $1",
+      "describe": {
+        "columns": [],
+        "parameters": {
+          "Left": [
+            "Uuid"
+          ]
+        },
+        "nullable": []
+      }
+    },
+    {
+      "query": "SELECT content FROM tasks WHERE id = $1",
+      "describe": {
+        "columns": [
+          {
+            "ordinal": 0,
+            "name": "content",
+            "type_info": "Text"
+          }
+        ],
+        "parameters": {
+          "Left": [
+            "Uuid"
+          ]
+        },
+        "nullable": [
+          false
+        ]
+      }
+    }
+  ]
+} 

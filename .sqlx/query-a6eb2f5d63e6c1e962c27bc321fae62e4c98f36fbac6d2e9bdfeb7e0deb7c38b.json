@@ -1,0 +1,49 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO comparisons (id, task_a_id, task_b_id, winner_id, timestamp) VALUES ($1, $2, $3, $4, NOW()) RETURNING id::text, task_a_id::text, task_b_id::text, winner_id::text, timestamp",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "task_a_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "task_b_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "winner_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "timestamp",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "a6eb2f5d63e6c1e962c27bc321fae62e4c98f36fbac6d2e9bdfeb7e0deb7c38b"
+} 
