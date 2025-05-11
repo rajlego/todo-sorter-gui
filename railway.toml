@@ -1,0 +1,20 @@
+[build]
+builder = "nixpacks"
+
+[deploy]
+numReplicas = 1
+startCommand = "node index.js"
+sleepApplication = false
+restartPolicyType = "on_failure"
+
+[service.backend]
+name = "todo-sorter-api"
+path = "."
+startCommand = "./target/release/sorter api"
+
+[service.frontend]
+name = "todo-sorter-web"
+path = "web"
+envs = { PORT = "80" }
+startCommand = "nginx -g 'daemon off;'"
+healthcheckPath = "/" 

@@ -1,11 +1,15 @@
 import axios from 'axios';
 import type { Task, Comparison } from './markdownUtils';
 
-// Define API base URL
-// In dev mode (localhost) use the local API, otherwise use Railway
-const API_BASE_URL = window.location.hostname === 'localhost' 
-  ? 'http://localhost:3000' 
-  : 'https://web-production-fa895.up.railway.app';
+// Define API base URL based on environment
+// Use environment variables if available, fallback to hardcoded values for local development
+const API_BASE_URL = 
+  // Read from environment variables if available (used in production)
+  import.meta.env.VITE_API_URL || 
+  // In dev mode (localhost) use the local API, otherwise use Railway
+  (window.location.hostname === 'localhost' 
+    ? 'http://localhost:3000' 
+    : 'https://todo-sorter-api-production.up.railway.app');
 
 console.log('Using API URL:', API_BASE_URL);
 
