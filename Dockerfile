@@ -31,6 +31,9 @@ RUN rm -f package-lock.json
 # Go back to the app directory and build the Rust application
 WORKDIR /app
 
+# Create static directory from web/dist
+RUN mkdir -p static && cp -r web/dist/* static/
+
 # Enable SQLx offline mode
 ENV SQLX_OFFLINE=true
 
@@ -51,7 +54,7 @@ WORKDIR /app
 
 # Copy the built artifacts
 COPY --from=builder /app/target/release/sorter /app/sorter
-COPY --from=builder /app/web/dist /app/static
+COPY --from=builder /app/static /app/static
 COPY --from=builder /app/migrations /app/migrations
 COPY --from=builder /app/.sqlx /app/.sqlx
 
