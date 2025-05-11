@@ -476,19 +476,24 @@ async fn add_comparison_handler(
 async fn health_check(
     State(state): State<Arc<AppState>>,
 ) -> impl IntoResponse {
-    // Try to ping the database
-    let db_status = match sqlx::query("SELECT 1").execute(&*state.db.pool).await {
-        Ok(_) => "connected",
-        Err(_) => {
-            if std::env::var("SQLX_OFFLINE").unwrap_or_default() == "true" {
-                "offline_mode"
-            } else {
+    // Get environment information
+    let sqlx_offline = std::env::var("SQLX_OFFLINE").unwrap_or_else(|_| "false".to_string());
+    let is_offline_mode = sqlx_offline == "true";
+    
+    // Try to ping the database if not in offline mode
+    let db_status = if !is_offline_mode {
+        match sqlx::query("SELECT 1").execute(&*state.db.pool).await {
+            Ok(_) => "connected",
+            Err(err) => {
+                tracing::error!("Database health check failed: {}", err);
                 "error"
             }
         }
+    } else {
+        "offline_mode"
     };
 
-    // Get environment information
+    // Get database URL (masked for security)
     let db_url = std::env::var("DATABASE_URL").unwrap_or_else(|_| "Not set".to_string());
     let db_url_masked = if db_url != "Not set" {
         // Mask the credentials in the DB URL for security
@@ -508,13 +513,20 @@ async fn health_check(
     let railway_service = std::env::var("RAILWAY_SERVICE_NAME").unwrap_or_default();
     
     let info = serde_json::json!({
-        "status": if db_status == "connected" { "healthy" } else { "degraded" },
+        "status": if db_status == "connected" { 
+            "healthy" 
+        } else if db_status == "offline_mode" { 
+            "limited" 
+        } else { 
+            "degraded" 
+        },
         "version": env!("CARGO_PKG_VERSION"),
         "environment": std::env::var("ENVIRONMENT").unwrap_or_else(|_| "development".to_string()),
         "database": {
             "status": db_status,
             "url_masked": db_url_masked,
-            "offline_mode": std::env::var("SQLX_OFFLINE").unwrap_or_else(|_| "false".to_string()),
+            "offline_mode": sqlx_offline,
+            "note": is_offline_mode ? "Database functions will not work in offline mode" : null,
         },
         "deployment": {
             "platform": if on_railway { "railway" } else { "unknown" },

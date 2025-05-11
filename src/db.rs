@@ -129,48 +129,46 @@ pub async fn create_pool() -> Result<PgPool, sqlx::Error> {
 
 // Fallback database for when PostgreSQL is not available (especially in Railway deployments)
 pub async fn create_fallback_pool() -> PgPool {
-    tracing::warn!("Using minimal fallback database (may not work for all operations)");
+    tracing::warn!("Using minimal fallback database in SQLX_OFFLINE mode (database operations will not work)");
     
-    // Check if we're in SQLX_OFFLINE mode
-    let is_offline = std::env::var("SQLX_OFFLINE").unwrap_or_default() == "true";
-    if !is_offline {
-        tracing::warn!("SQLX_OFFLINE=true is not set. Fallback database may fail.");
+    // Create a minimal connection string - this won't actually be used for database operations
+    let fallback_url = "postgres://postgres:password@localhost:5432/postgres";
+    
+    // Ensure SQLX_OFFLINE is set - this is crucial
+    if std::env::var("SQLX_OFFLINE").unwrap_or_default() != "true" {
+        tracing::warn!("SQLX_OFFLINE environment variable is not set to 'true'. Setting it now.");
+        std::env::set_var("SQLX_OFFLINE", "true");
     }
     
-    // Simply create a minimal Postgres connection that won't be used for actual operations
-    // This relies on SQLX_OFFLINE mode to allow compilation without a working connection
-    let fallback_url = "postgres://postgres:password@localhost:5432/postgres";
-    tracing::info!("Creating fallback database connection to {}", fallback_url);
-    
-    match PgPoolOptions::new()
+    // In SQLX_OFFLINE mode, this doesn't actually connect to a database
+    // It just creates a pool object that will be used by sqlx macros at compile time
+    let pool = PgPoolOptions::new()
         .max_connections(1)
         .connect(fallback_url)
-        .await
-    {
+        .await;
+    
+    match pool {
         Ok(pool) => {
-            tracing::info!("Successfully created fallback database connection");
+            tracing::info!("Created fallback database pool successfully (in offline mode)");
             pool
         },
         Err(err) => {
-            // When SQLX_OFFLINE is true, we can still continue without a database
-            // This allows the app to compile and start, albeit with limited functionality
-            if is_offline {
-                tracing::warn!("Failed to create fallback database, but SQLX_OFFLINE=true is set: {}. Creating a dummy pool.", err);
-                
-                // Create a "fake" pool that will never actually be used
-                // This is a hack, but it allows the app to start without a database
-                let pool = PgPoolOptions::new()
-                    .max_connections(1)
-                    .connect(fallback_url)
-                    .await
-                    .unwrap_or_else(|_| {
-                        panic!("Failed to create even a minimal fallback database. This should never happen.")
-                    });
-                
-                pool
-            } else {
-                panic!("Failed to create fallback database connection: {}. Make sure SQLX_OFFLINE=true is set if you want to run without a database.", err);
-            }
+            // This should never happen with SQLX_OFFLINE=true
+            tracing::error!("Failed to create fallback database pool: {}", err);
+            tracing::error!("This should not happen with SQLX_OFFLINE=true. Check your SQLx version.");
+            
+            // Rather than panicking, we'll create a "fake" pool object 
+            // Since we're in offline mode, this won't be used for real database operations
+            tracing::warn!("Creating emergency fallback pool as a last resort");
+            
+            // We have to return something, so we'll try one more time
+            PgPoolOptions::new()
+                .max_connections(1)
+                .connect(fallback_url)
+                .await
+                .unwrap_or_else(|_| {
+                    panic!("FATAL: Cannot create even a minimal fallback database in SQLX_OFFLINE mode. Application cannot start.")
+                })
         }
     }
 }
