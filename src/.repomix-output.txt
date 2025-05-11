@@ -1,0 +1,1286 @@
+This file is a merged representation of a subset of the codebase, containing specifically included files and files not matching ignore patterns, combined into a single document by Repomix.
+The content has been processed where empty lines have been removed.
+
+<file_summary>
+This section contains a summary of this file.
+
+<purpose>
+This file contains a packed representation of the entire repository's contents.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+</purpose>
+
+<file_format>
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+4. Repository files, each consisting of:
+  - File path as an attribute
+  - Full contents of the file
+</file_format>
+
+<usage_guidelines>
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+</usage_guidelines>
+
+<notes>
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Only files matching these patterns are included: **/*, .cursorrules, .cursor/rules/*, .clinerules, CLAUDE.md
+- Files matching these patterns are excluded: .*.*, **/*.pbxproj, **/node_modules/**, **/dist/**, **/build/**, **/compile/**, **/*.spec.*, **/*.pyc, **/.env, **/.env.*, **/*.env, **/*.env.*, **/*.lock, **/*.lockb, **/package-lock.*, **/pnpm-lock.*, **/*.tsbuildinfo
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Empty lines have been removed from all files
+- Files are sorted by Git change count (files with more changes are at the bottom)
+</notes>
+
+<additional_info>
+
+</additional_info>
+
+</file_summary>
+
+<directory_structure>
+api.ts
+App.tsx
+asap_cpu.rs
+changes-summary.md
+index.css
+main.rs
+mp.rs
+plot_ci.rs
+plot_ratings.rs
+sorter.rs
+web_service.rs
+</directory_structure>
+
+<files>
+This section contains the contents of the repository's files.
+
+<file path="api.ts">
+// src/api.ts
+const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
+export async function fetchHealth(): Promise<string> {
+  const res = await fetch(`${API_BASE_URL}/healthz`);
+  if (!res.ok) throw new Error('API health check failed');
+  return res.text();
+}
+// Add more API functions as backend endpoints are defined
+</file>
+
+<file path="App.tsx">
+import React, { useState } from 'react';
+import MonacoEditor from '@monaco-editor/react';
+import { fetchHealth } from './api';
+function App() {
+  const [markdown, setMarkdown] = useState<string>(
+    '# Welcome to the Comparison Sorter App!\n\nEdit this markdown and see Monaco Editor in action.'
+  );
+  const [apiStatus, setApiStatus] = useState<string | null>(null);
+  const [apiError, setApiError] = useState<string | null>(null);
+  const checkApi = async () => {
+    setApiStatus(null);
+    setApiError(null);
+    try {
+      const status = await fetchHealth();
+      setApiStatus(status);
+    } catch (err: any) {
+      setApiError(err.message || 'Unknown error');
+    }
+  };
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 p-4">
+      <h1 className="text-4xl font-bold text-blue-600 mb-4">Comparison Sorter App</h1>
+      <p className="text-lg text-gray-700 mb-6">React + Vite + Tailwind CSS + Monaco Editor</p>
+      <div className="w-full max-w-2xl h-96 shadow-lg border border-gray-200 rounded mb-6">
+        <MonacoEditor
+          height="100%"
+          defaultLanguage="markdown"
+          value={markdown}
+          onChange={value => setMarkdown(value || '')}
+          options={{
+            minimap: { enabled: false },
+            wordWrap: 'on',
+            fontSize: 16,
+          }}
+        />
+      </div>
+      <button
+        className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition mb-2"
+        onClick={checkApi}
+      >
+        Test Railway Backend API
+      </button>
+      {apiStatus && <div className="text-green-600">API Response: {apiStatus}</div>}
+      {apiError && <div className="text-red-600">API Error: {apiError}</div>}
+    </div>
+  );
+}
+export default App;
+</file>
+
+<file path="asap_cpu.rs">
+use libm::{erf, erfc, exp};
+use std::f64::consts::PI;
+// perf ideas:
+// - use selective EIG a la (https://arxiv.org/abs/2004.05691) (~only eval posterior on pairs with closeish ratings)
+// - dynamically set threshold based on gradient of KL divergence and maybe best known EIG?
+//   - compute gradients of element posteriors by other element posteriors & use that to propagate gradients?
+//   - doable with autodiff i think, just backprop on KL div & use gradients of posteriors as thresholds
+// - prio queue for updates in message passing by magnitude of update?
+pub struct ASAP {
+    ts_solver: TrueSkillSolver,
+}
+impl ASAP {
+    pub fn new(n: usize) -> Self {
+        ASAP {
+            ts_solver: TrueSkillSolver::new(n),
+        }
+    }
+    pub fn run_asap(
+        &mut self,
+        m: &[Vec<i32>],
+    ) -> ((usize, usize), Vec<Vec<f64>>, Vec<f64>, Vec<f64>) {
+        let n = m.len();
+        let g = self.unroll_mat(m);
+        self.compute_information_gain_mat(n, &g)
+    }
+    fn unroll_mat(&self, m: &[Vec<i32>]) -> Vec<[usize; 2]> {
+        let n = m.len();
+        let mut g = Vec::new();
+        for i in 0..n {
+            for j in 0..n {
+                if m[i][j] > 0 {
+                    // TODO use counts in trueskill solver instead of this loop
+                    for _ in 0..m[i][j] {
+                        g.push([i, j]);
+                    }
+                }
+            }
+        }
+        g
+    }
+    fn compute_prob_cmps(&self) -> Vec<Vec<f64>> {
+        let (means, vrs) = (self.ts_solver.ms.as_slice(), self.ts_solver.vs.as_slice());
+        let n = means.len();
+        let mut prob = vec![vec![0.0; n]; n];
+        for i in 0..n {
+            for j in 0..n {
+                if i == j {
+                    prob[i][j] = 0.0;
+                } else {
+                    let diff_means = means[i] - means[j];
+                    let vars_sum = 1.0 + vrs[i] + vrs[j];
+                    prob[i][j] = ndtr(diff_means / vars_sum.sqrt());
+                }
+            }
+        }
+        prob
+    }
+    fn compute_information_gain_mat(
+        &mut self,
+        n: usize,
+        g: &[[usize; 2]],
+    ) -> ((usize, usize), Vec<Vec<f64>>, Vec<f64>, Vec<f64>) {
+        let mut kl_divs = vec![vec![0.0; n]; n];
+        self.ts_solver.push_many(g);
+        let (ms_curr, vs_curr) = self.ts_solver.solve(true);
+        let prob = self.compute_prob_cmps();
+        for i in 1..n {
+            for j in 0..i {
+                let kl1 = {
+                    let (ms, vs) = self.ts_solver.solve_one((i, j));
+                    kl_divergence(&ms, &vs, &ms_curr, &vs_curr)
+                };
+                let kl2 = {
+                    let (ms, vs) = self.ts_solver.solve_one((j, i));
+                    kl_divergence(&ms, &vs, &ms_curr, &vs_curr)
+                };
+                kl_divs[i][j] = prob[i][j] * kl1 + prob[j][i] * kl2;
+            }
+        }
+        let pair_to_compare = self.get_maximum(&kl_divs);
+        (pair_to_compare, prob, ms_curr, vs_curr)
+    }
+    fn get_maximum(&self, gain_mat: &[Vec<f64>]) -> (usize, usize) {
+        // use rand::distributions::{Distribution, WeightedIndex};
+        // use rand::thread_rng;
+        // let mut rng = thread_rng();
+        let mut indices = Vec::new();
+        let mut weights = Vec::new();
+        println!("gain_mat: {:?}", gain_mat);
+        for (i, row) in gain_mat.iter().enumerate() {
+            for (j, &gain) in row.iter().enumerate() {
+                indices.push((i, j));
+                weights.push(exp(gain * 20.0));
+            }
+        }
+        // let dist = WeightedIndex::new(&weights).unwrap();
+        // let chosen_index = dist.sample(&mut rng);
+        let chosen_index = weights
+            .iter()
+            .zip(&indices)
+            .enumerate()
+            .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
+            .unwrap()
+            .0;
+        let chosen_pair = indices[chosen_index];
+        let max_gain = gain_mat
+            .iter()
+            .flat_map(|row| row.iter().cloned())
+            .fold(0.0, f64::max);
+        println!(
+            "Chosen EIG: {}, Max EIG: {}",
+            gain_mat[chosen_pair.0][chosen_pair.1], max_gain
+        );
+        chosen_pair
+    }
+}
+struct FastUsizeSet {
+    set: Vec<bool>,
+    vec: Vec<usize>,
+}
+impl FastUsizeSet {
+    fn new(n: usize) -> Self {
+        FastUsizeSet {
+            set: vec![false; n],
+            vec: Vec::new(),
+        }
+    }
+    fn add(&mut self, i: usize) {
+        if self.set[i] {
+            return;
+        }
+        self.set[i] = true;
+        self.vec.push(i);
+    }
+    fn pop(&mut self) -> Option<usize> {
+        let i = self.vec.pop();
+        if let Some(i) = i {
+            self.set[i] = false;
+        }
+        i
+    }
+}
+struct TrueSkillSolver {
+    n: usize,
+    ms: Vec<f64>,
+    vs: Vec<f64>,
+    mgs: Vec<[f64; 2]>,
+    pgs: Vec<[f64; 2]>,
+    var_to_cmps0: Vec<Vec<usize>>,
+    var_to_cmps1: Vec<Vec<usize>>,
+    g: Vec<[usize; 2]>,
+}
+impl TrueSkillSolver {
+    pub fn new(n: usize) -> Self {
+        TrueSkillSolver {
+            n,
+            ms: vec![0.0; n],
+            vs: vec![0.5; n],
+            mgs: Vec::new(),
+            pgs: Vec::new(),
+            var_to_cmps0: vec![vec![]; n],
+            var_to_cmps1: vec![vec![]; n],
+            g: Vec::new(),
+        }
+    }
+    fn push_many(&mut self, g: &[[usize; 2]]) {
+        for &[a, b] in g {
+            self.push_cmp(a, b);
+        }
+    }
+    fn push_cmp(&mut self, i: usize, j: usize) {
+        self.pgs.push([0.0; 2]);
+        self.mgs.push([0.0; 2]);
+        self.g.push([i, j]);
+        let id = self.pgs.len() - 1;
+        self.var_to_cmps0[i].push(id);
+        self.var_to_cmps1[j].push(id);
+    }
+    fn pop_cmp(&mut self, i: usize, j: usize) {
+        self.pgs.pop();
+        self.mgs.pop();
+        self.g.pop();
+        let id = self.pgs.len();
+        self.var_to_cmps0[i].retain(|&x| x != id);
+        self.var_to_cmps1[j].retain(|&x| x != id);
+    }
+    // pub fn solve_with_cmp(
+    //     &mut self,
+    //     g: &[[usize; 2]],
+    //     num_iters: usize,
+    //     cmp: (usize, usize),
+    // ) -> (Vec<f64>, Vec<f64>) {
+    // }
+    //
+    pub fn solve(&mut self, save: bool) -> (Vec<f64>, Vec<f64>) {
+        let mut todo_vars = FastUsizeSet::new(self.n);
+        let mut todo_cmps = FastUsizeSet::new(self.g.len());
+        for p in 0..self.n {
+            todo_vars.add(p);
+        }
+        for j in 0..self.g.len() {
+            todo_cmps.add(j);
+        }
+        self._solve(todo_vars, todo_cmps, save, 0.001)
+    }
+    pub fn solve_one(&mut self, cmp: (usize, usize)) -> (Vec<f64>, Vec<f64>) {
+        self.push_cmp(cmp.0, cmp.1);
+        let mut todo_vars = FastUsizeSet::new(self.n);
+        let mut todo_cmps = FastUsizeSet::new(self.g.len());
+        todo_vars.add(cmp.0);
+        todo_vars.add(cmp.1);
+        todo_cmps.add(self.g.len() - 1);
+        // TODO could run top k candidates again with a lower threshold
+        let r = self._solve(todo_vars, todo_cmps, false, 0.1);
+        self.pop_cmp(cmp.0, cmp.1);
+        r
+    }
+    pub fn _solve(
+        &mut self,
+        mut todo_vars: FastUsizeSet,
+        mut todo_cmps: FastUsizeSet,
+        save: bool,
+        threshold: f64,
+    ) -> (Vec<f64>, Vec<f64>) {
+        let mut pgs = self.pgs.clone();
+        let mut mgs = self.mgs.clone();
+        let mut ps: Vec<f64> = self.vs.iter().map(|&v| 1.0 / v).collect();
+        let mut ms = self.ms.clone();
+        let mut sum_pgs_mgs = vec![0.0; self.n];
+        let mut sum_pgs = vec![0.0; self.n];
+        // assert!(n_cmps == pgs.len());
+        // assert!(n_cmps == mgs.len());
+        // assert!(n_cmps == self.g.len());
+        assert!(self.n == sum_pgs.len());
+        assert!(self.n == sum_pgs_mgs.len());
+        assert!(self.n == ps.len());
+        assert!(self.n == ms.len());
+        let g = &self.g;
+        for _i in 0..1000 {
+            // println!("iter {}, todo_cmps {}", _i, todo_cmps.vec.len());
+            if todo_cmps.vec.len() == 0 {
+                break;
+            }
+            while let Some(j) = todo_cmps.pop() {
+                // TODO to avoid bounds check but can't use nightly bc raj :(
+                // unsafe {
+                //     std::intrinsics::assume(g[j][0] < self.n && g[j][1] < self.n);
+                //     std::intrinsics::assume(j < self.g.len());
+                // }
+                // unsafe {
+                //     std::intrinsics::assume(g[j][0] < self.n && g[j][1] < self.n);
+                // }
+                let psg0 = ps[g[j][0]] - pgs[j][0];
+                let psg1 = ps[g[j][1]] - pgs[j][1];
+                let msg0 = (ps[g[j][0]] * ms[g[j][0]] - pgs[j][0] * mgs[j][0]) / psg0;
+                let msg1 = (ps[g[j][1]] * ms[g[j][1]] - pgs[j][1] * mgs[j][1]) / psg1;
+                let vgt = 1.0 + 1.0 / psg0 + 1.0 / psg1;
+                let mgt = msg0 - msg1;
+                let (ps_val, lmb) = psi_lamb(mgt / vgt.sqrt());
+                let mt = mgt + vgt.sqrt() * ps_val;
+                let pt = 1.0 / (vgt * (1.0 - lmb));
+                let ptg = pt - 1.0 / vgt;
+                let mtg = (mt * pt - mgt / vgt) / (ptg + f64::EPSILON);
+                pgs[j][0] = 1.0 / (1.0 + 1.0 / ptg + 1.0 / psg1);
+                pgs[j][1] = 1.0 / (1.0 + 1.0 / ptg + 1.0 / psg0);
+                mgs[j][0] = msg1 + mtg;
+                mgs[j][1] = msg0 - mtg;
+                todo_vars.add(g[j][0]);
+                todo_vars.add(g[j][1]);
+            }
+            while let Some(p) = todo_vars.pop() {
+                sum_pgs[p] = 0.0;
+                sum_pgs_mgs[p] = 0.0;
+                for &i in &self.var_to_cmps0[p] {
+                    sum_pgs[p] += pgs[i][0];
+                    sum_pgs_mgs[p] += pgs[i][0] * mgs[i][0];
+                }
+                for &i in &self.var_to_cmps1[p] {
+                    sum_pgs[p] += pgs[i][1];
+                    sum_pgs_mgs[p] += pgs[i][1] * mgs[i][1];
+                }
+                let ps_ = 0.02 + sum_pgs[p];
+                let ms_ = sum_pgs_mgs[p] / ps_;
+                if (ms_ - ms[p]).abs() > threshold || (ps_ - ps[p]).abs() > threshold {
+                    // println!("p {} ms {} -> {} ps {} -> {}", p, ms[p], ms_, ps[p], ps_);
+                    for &i in &self.var_to_cmps0[p] {
+                        todo_cmps.add(i);
+                    }
+                    for &i in &self.var_to_cmps1[p] {
+                        todo_cmps.add(i);
+                    }
+                }
+                ps[p] = ps_;
+                ms[p] = ms_;
+            }
+        }
+        if ps.iter().any(|&p| p.is_nan()) || ms.iter().any(|&m| m.is_nan()) {
+            panic!("NaN in ps/ms: ps: {:?}\nms: {:?}", ps, ms);
+        }
+        if save {
+            self.vs = ps.iter().map(|&p| 1.0 / p).collect();
+            self.ms = ms.clone();
+            self.pgs = pgs;
+            self.mgs = mgs;
+        }
+        (ms, ps.iter().map(|&p| 1.0 / p).collect())
+    }
+}
+// Helper functions
+fn kl_divergence(mean_1: &[f64], var_1: &[f64], mean_2: &[f64], var_2: &[f64]) -> f64 {
+    0.5 * (var_2.iter().map(|&x| x.ln()).sum::<f64>() - var_1.iter().map(|&x| x.ln()).sum::<f64>()
+        + var_1
+            .iter()
+            .zip(var_2.iter())
+            .map(|(&v1, &v2)| v1 / v2)
+            .sum::<f64>()
+        + mean_1
+            .iter()
+            .zip(mean_2.iter())
+            .zip(var_2.iter())
+            .map(|((&m1, &m2), &v2)| (m2 - m1).powi(2) / v2)
+            .sum::<f64>()
+        - mean_1.len() as f64)
+}
+// too slow :(
+// TODO could use simd w/ sleef for erf
+fn kl_div_pairs(mean_1: &[f64], var_1: &[f64], mean_2: &[f64], var_2: &[f64]) -> f64 {
+    let mut sorted_ixs = (0..mean_1.len()).collect::<Vec<_>>();
+    sorted_ixs.sort_by(|&i, &j| mean_1[i].partial_cmp(&mean_1[j]).unwrap());
+    let mut kl = 0.0;
+    for i in 0..mean_1.len() {
+        let m1l = mean_1[i];
+        let v1l = var_1[i];
+        let m2l = mean_2[i];
+        let v2l = var_2[i];
+        if (m1l - m2l).abs() < 1e-6 && (v1l - v2l).abs() < 1e-6 {
+            continue;
+        }
+        // only compare closest 4 items to each i
+        // FIXME need to sort by mean first
+        for j in (i.saturating_sub(2))..(i + 3).min(mean_1.len()) {
+            let m1r = mean_1[j];
+            let v1r = var_1[j];
+            let m2r = mean_2[j];
+            let v2r = var_2[j];
+            let v1_sum = 1.0 + v1l + v1r;
+            let v2_sum = 1.0 + v2l + v2r;
+            // TODO get q from prob cmps
+            let p = ndtr((m1l - m1r) / v1_sum.sqrt());
+            let q = ndtr((m2l - m2r) / v2_sum.sqrt());
+            kl += p * (p / q).ln();
+            // kl += (1.0 - p) * ((1.0 - p) / (1.0 - q)).ln();
+        }
+    }
+    kl
+}
+fn ndtr(a: f64) -> f64 {
+    if a.is_nan() {
+        return f64::NAN;
+    }
+    let x = a * (1.0 / 2.0_f64.sqrt());
+    let z = x.abs();
+    if z < (1.0 / 2.0_f64.sqrt()) {
+        0.5 + 0.5 * erf(x)
+    } else {
+        let y = 0.5 * erfc(z);
+        if x > 0.0 {
+            1.0 - y
+        } else {
+            y
+        }
+    }
+}
+fn psi_lamb(x: f64) -> (f64, f64) {
+    let p = exp(-x * x / 2.0) / (2.0 * PI).sqrt();
+    let c = ndtr(x);
+    let ps = p / c;
+    (ps, ps * (ps + x))
+}
+</file>
+
+<file path="changes-summary.md">
+# Changes Made to Use Markdown as Source of Truth
+
+## Backend Changes
+
+1. Removed TaskInfo storage in AppState
+2. Added ContentComparison for task content-based comparisons
+3. Updated API to use content-based task identification
+4. Removed task registration/storage endpoints
+5. Rankings now derived from comparison content
+
+## Frontend Changes
+
+1. Removed registeredTasks state
+2. Removed all task synchronization code
+3. API client now sends task content directly
+4. Task ID generation now just for UI purposes
+5. Simplified App.tsx to use markdown as source of truth
+
+## Benefits
+
+1. No more 'ghost' tasks in rankings
+2. Tasks only exist in markdown
+3. UI shows only what's in the markdown
+4. Simple mental model - what you see is what you get
+</file>
+
+<file path="index.css">
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+</file>
+
+<file path="main.rs">
+// #![feature(let_chains)]
+// #![feature(core_intrinsics)]
+mod asap_cpu;
+mod mp;
+mod plot_ci;
+pub mod plot_ratings;
+mod sorter;
+mod web_service;
+#[tokio::main]
+async fn main() {
+    // Check for command line arguments
+    let args: Vec<String> = std::env::args().collect();
+    // If "api" argument is provided, run the web service
+    if args.len() > 1 && args[1] == "api" {
+        println!("Starting API server...");
+        web_service::run_web_service().await;
+    } else {
+        // Otherwise, run the original sorter CLI
+        if let Err(e) = sorter::main() {
+            eprintln!("Error: {}", e);
+        }
+    }
+}
+</file>
+
+<file path="mp.rs">
+// struct Normal<M, P, O> {}
+//
+//
+</file>
+
+<file path="plot_ci.rs">
+use std::fs::File;
+use std::io::Write;
+fn escape_xml(s: &str) -> String {
+    s.replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('"', "&quot;")
+        .replace('\'', "&#39;")
+}
+pub fn plot_ci(mut items: Vec<(String, f64, f64)>, filename: &str) -> std::io::Result<()> {
+    // Sort items by mean in descending order
+    items.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
+    let graph_width = 400.0;
+    let left_margin = 50.0; // Reduced left margin
+    let right_margin = 1200.0; // Increased right margin for labels
+    let total_width = left_margin + graph_width + right_margin;
+    let row_height = 20.0;
+    let height = row_height * items.len() as f64 + 40.0; // Add some extra space at the bottom
+    let min_mean = items
+        .iter()
+        .map(|&(_, m, _)| m)
+        .fold(f64::INFINITY, f64::min);
+    let max_mean = items
+        .iter()
+        .map(|&(_, m, _)| m)
+        .fold(f64::NEG_INFINITY, f64::max);
+    let range = max_mean - min_mean;
+    let mut svg = format!(
+        r#"<svg xmlns="http://www.w3.org/2000/svg" width="{}" height="{}">"#,
+        total_width, height
+    );
+    // Add a white background
+    svg.push_str(&format!(
+        r#"<rect width="100%" height="100%" fill="white"/>"#
+    ));
+    // Add vertical line separating labels from graph
+    svg.push_str(&format!(
+        r#"<line x1="{}" y1="0" x2="{}" y2="{}" stroke="\#ccc" stroke-width="1"/>"#,
+        left_margin, left_margin, height
+    ));
+    for (i, (name, mean, var)) in items.iter().enumerate() {
+        let y = i as f64 * row_height + 20.0; // Add some top padding
+        let x = left_margin + (graph_width * (max_mean - mean) / range);
+        let ci_width = graph_width * (var.sqrt() * 1.645) / range; // 90% confidence interval
+        // Add confidence interval line
+        svg.push_str(&format!(
+            r#"<line x1="{}" y1="{}" x2="{}" y2="{}" stroke="black" stroke-width="2"/>"#,
+            x - ci_width / 2.0,
+            y,
+            x + ci_width / 2.0,
+            y
+        ));
+        // Add mean point
+        svg.push_str(&format!(
+            r#"<circle cx="{}" cy="{}" r="4" fill="blue"/>"#,
+            x, y
+        ));
+        // Add label to the left of the CI
+        let label_x = x + ci_width / 2.0 + 10.0;
+        svg.push_str(&format!(
+            r#"<text x="{}" y="{}" font-family="Arial, sans-serif" font-size="14" text-anchor="start" dominant-baseline="middle">{}</text>"#,
+            label_x,
+            y,
+            escape_xml(&truncate_text(name, 200))
+        ));
+    }
+    svg.push_str("</svg>");
+    File::create(filename)?.write_all(svg.as_bytes())?;
+    Ok(())
+}
+fn truncate_text(s: &str, max_chars: usize) -> String {
+    if s.chars().count() <= max_chars {
+        s.to_string()
+    } else {
+        let mut truncated: String = s.chars().take(max_chars - 3).collect();
+        truncated.push_str("...");
+        truncated
+    }
+}
+</file>
+
+<file path="plot_ratings.rs">
+use std::collections::{HashMap, HashSet};
+use std::fs::File;
+use std::io::{self, BufRead, Write};
+use std::process::Command;
+// fn rating_to_color(range: f64, rating: f64) -> String {
+//     // let clamped_rating = rating.max(-2.0).min(2.0);
+//     color_from_norm(normalized)
+// }
+fn color_from_norm(norm: f64) -> String {
+    if norm < 0.5 {
+        let r = 255;
+        let g = (255.0 * (norm * 2.0)) as u8;
+        format!("#{:02X}{:02X}00", r, g)
+    } else {
+        let r = (255.0 * ((1.0 - norm) * 2.0)) as u8;
+        let g = 255;
+        format!("#{:02X}{:02X}00", r, g)
+    }
+}
+fn edge_color_from_norm(norm: f64) -> String {
+    let intensity = (255.0 * (1.0 - norm)) as u8;
+    format!("#{:02X}{:02X}{:02X}", intensity, intensity, intensity)
+}
+fn dfs(
+    edges: &HashMap<usize, Vec<usize>>,
+    from: usize,
+    visited: &mut HashSet<usize>,
+    map: &HashMap<(usize, usize), f64>,
+    ok: &impl Fn(&f64) -> bool,
+) {
+    if !visited.insert(from) {
+        return;
+    }
+    for to in edges.get(&from).unwrap_or(&vec![]) {
+        if ok(map.get(&(from, *to)).unwrap()) {
+            dfs(edges, *to, visited, map, ok);
+        }
+    }
+}
+fn transitive_reduction(edges: &mut HashMap<(usize, usize), f64>, ok: &impl Fn(&f64) -> bool) {
+    // let mut edges_to_remove = Vec::new();
+    let mut map: HashMap<usize, Vec<usize>> = HashMap::new();
+    let mut nodes: Vec<usize> = edges.keys().map(|(x, _)| *x).collect();
+    nodes.sort();
+    for (from, to) in edges.keys() {
+        map.entry(*from).or_insert_with(Vec::new).push(*to);
+    }
+    let mut edges_to_remove = HashSet::new();
+    let mut dfs_buf: HashSet<usize> = HashSet::new();
+    for n1 in nodes.iter() {
+        for n2 in map.get(n1).unwrap_or(&vec![]) {
+            if edges_to_remove.contains(n2) {
+                continue;
+            }
+            dfs_buf.insert(*n1);
+            dfs(&map, *n2, &mut dfs_buf, &edges, ok);
+            for n3 in dfs_buf.iter() {
+                if n2 == n3 || n1 == n3 {
+                    continue;
+                }
+                edges_to_remove.insert(*n3);
+            }
+            dfs_buf.clear();
+            // }
+        }
+        for y in edges_to_remove.iter() {
+            edges.remove(&(*n1, *y));
+            map.get_mut(n1)
+                .unwrap()
+                .retain(|z| !edges_to_remove.contains(z));
+        }
+        edges_to_remove.clear();
+    }
+}
+pub fn plot_ratings(
+    input_file: &str,
+    output_file: &str,
+    ms_curr: &[f64],
+    id_to_index: &HashMap<usize, usize>,
+    prob: &[Vec<f64>],
+) -> io::Result<()> {
+    let print = false;
+    // let mut dot_content = String::from("digraph {\n  rankdir=LR;\nnewrank=true;\n");
+    let mut dot_content =
+        // String::from("digraph {\n  rankdir=LR;\nTBbalance=\"max\"\nratio=\"compress\"\n");
+        // String::from("digraph {\n  rankdir=LR;\nratio=\"0.7\"\nranksep=\"0.1\"\nsplines=line\n");
+        // String::from("digraph {\n  rankdir=LR;\nratio=\"0.7\"\nmargin=0\nnodesep=\"0.02\"\nranksep=\"0.05\"\nconcentrate=true\n");
+        String::from("digraph {\n  rankdir=LR;\nratio=\"0.7\"\nmargin=0\nnodesep=\"0.02\"\nranksep=\"0.05\"\n");
+    // String::from("digraph {\n  rankdir=LR;\nratio=\"0.7\"\nmargin=0\nnodesep=\"0.02\"\nranksep=\"0.05\"\n");
+    // \nranksep=\"0.1\"\n");
+    let rating_min = ms_curr.iter().fold(f64::INFINITY, |acc, &p| acc.min(p));
+    let rating_max = ms_curr.iter().fold(f64::NEG_INFINITY, |acc, &p| acc.max(p));
+    let rating_range = rating_max - rating_min;
+    if print {
+        println!("{:?}", (rating_min, rating_max, rating_range));
+    }
+    for (id, idx) in id_to_index.iter() {
+        let rating = ms_curr[*idx];
+        let color = color_from_norm((rating - rating_min) / rating_range);
+        dot_content.push_str(&format!(
+            // "  {} [label=\"{}\", style=filled, fillcolor=\"{}\"];\n",
+            "  {} [label=\"{}\", style=filled, fillcolor=\"{}\"];\n",
+            id, id, color
+        ));
+    }
+    let Ok(file) = File::open(input_file) else {
+        return Ok(());
+    };
+    let reader = io::BufReader::new(file);
+    let mut edges: HashMap<(usize, usize), f64> = HashMap::new();
+    for line in reader.lines() {
+        let line = line?;
+        let parts: Vec<&str> = line.split(',').collect();
+        if parts.len() == 2 {
+            let from = parts[0].parse::<usize>().unwrap();
+            let to = parts[1].parse::<usize>().unwrap();
+            if id_to_index.contains_key(&from) && id_to_index.contains_key(&to) {
+                let p = prob[id_to_index[&from]][id_to_index[&to]];
+                edges.insert((from, to), p);
+            }
+        }
+    }
+    transitive_reduction(&mut edges, &|p| *p > 0.5);
+    transitive_reduction(&mut edges, &|p| *p < 0.5);
+    // transitive_reduction(&mut edges, &|p| *p > 0.4);
+    // transitive_reduction(&mut edges, &|p| *p < 0.6);
+    // transitive_reduction(&mut edges, &|_| true);
+    if print {
+        println!("Edges after transitive reduction: {:?}", edges.len());
+    }
+    for ((from, to), &p) in edges.iter() {
+        // let d = if ms_map[&from] < ms_map[&to] {
+        //     ((ms_map[&from] - ms_map[&to]) / 0.3).floor()
+        // } else {
+        //     ((ms_map[&from] - ms_map[&to]) / 0.2).floor().max(1.0)
+        // };
+        // TODO maybe also use variance here?
+        // maybe use cmp prob?
+        // println!("{:?}", p);
+        // let d = ((p - 0.5) * 2.0).powf(3.0);
+        // let d = ms_map[&to] - ms_map[&from];
+        // let d =
+        dot_content.push_str(&format!(
+            "  {} -> {} [color=\"{}\"{}];\n",
+            &from,
+            &to,
+            edge_color_from_norm(p),
+            if p > 0.5 {
+                // ",weight=10"
+                ""
+            } else if p > 0.45 {
+                ",minlen=0"
+            } else if p > 0.35 {
+                ",minlen=0,weight=0"
+                // ",minlen=0,weight=1"
+            } else {
+                ",minlen=0,constraint=false"
+            }
+        ));
+        // dot_content.push_str(&format!("  {} -> {} [len={}];\n", &from, &to, d));
+        // let w = p * 0.3;
+        // if ms_map[&from] < ms_map[&to] {
+        //     let d = ((ms_map[&from] - ms_map[&to]) * w).ceil();
+        //     dot_content.push_str(&format!("  {} -> {} [minlen={}];\n", &from, &to, d));
+        //     // dot_content.push_str(&format!("  {} -> {} [minlen=0];\n", &from, &to));
+        // } else {
+        //     let d = ((ms_map[&from] - ms_map[&to]) * (w / 1.0)).ceil();
+        //     dot_content.push_str(&format!("  {} -> {} [minlen={}];\n", &from, &to, d));
+        // }
+    }
+    dot_content.push_str("}\n");
+    let output_dot = format!("{}.dot", output_file);
+    let output_png = format!("{}.png", output_file);
+    // Save the dot file
+    std::fs::write(&output_dot, &dot_content)?;
+    if print {
+        println!("Dot file saved as {}", output_dot);
+    }
+    // Generate PNG from dot file
+    // let command = format!("tred {} | dot -Tpng -o {}", output_dot, output_png);
+    let command = format!("dot -Tpng {} -o {}", output_dot, output_png);
+    // let command = format!("tred {} | fdp -Tpng -o {}", output_dot, output_png);
+    let out = Command::new("sh").arg("-c").arg(&command).output()?;
+    if print {
+        io::stdout().write_all(&out.stdout)?;
+        io::stderr().write_all(&out.stderr)?;
+        println!("Graph saved as {}", output_png);
+    }
+    Ok(())
+}
+</file>
+
+<file path="sorter.rs">
+use rand::Rng;
+use tuple_map::TupleMap2;
+use crate::asap_cpu::ASAP;
+use crate::plot_ci::plot_ci;
+use std::collections::HashMap;
+use std::fs::File;
+use std::io::{self, BufRead, Write};
+use std::process::Command;
+use std::thread;
+const EMOJIS: &[&str] = &["📅", "⏳", "✅"];
+pub fn main() -> io::Result<()> {
+    let mut args = std::env::args();
+    args.next();
+    let dir = args.next().unwrap();
+    std::env::set_current_dir(dir.clone())?;
+    println!(
+        "dir: {} (should be = {})",
+        std::env::current_dir()?.display(),
+        dir
+    );
+    loop {
+        run()?
+    }
+}
+fn run() -> io::Result<()> {
+    let (mut with_rid, mut without_rid) = get_todos()?;
+    if without_rid.is_empty() && with_rid.is_empty() {
+        println!("No todos found");
+        return Ok(());
+    }
+    let comparisons = if let Ok(file) = File::open("ratings.log") {
+        let fr = io::BufReader::new(&file);
+        fr.lines()
+            .filter_map(|line| {
+                let line = line.ok()?;
+                if let [i, j] = line
+                    .split(',')
+                    .filter_map(|s| s.parse().ok())
+                    .filter(|&i| with_rid.contains_key(&i))
+                    .collect::<Vec<_>>()[..]
+                {
+                    Some((i, j))
+                } else {
+                    None
+                }
+            })
+            .collect()
+    } else {
+        Vec::new()
+    };
+    let mut id_to_index: HashMap<_, _> = with_rid
+        .iter()
+        .enumerate()
+        .map(|(i, (&id, _))| (id, i))
+        .collect();
+    let mut index_to_id: HashMap<_, _> = id_to_index.iter().map(|(&k, &v)| (v, k)).collect();
+    let n = with_rid.len() + if without_rid.is_empty() { 0 } else { 1 };
+    let mut m = vec![vec![0; n]; n];
+    for &(i, j) in &comparisons {
+        if id_to_index.contains_key(&i) && id_to_index.contains_key(&j) {
+            m[id_to_index[&i]][id_to_index[&j]] += 1;
+        }
+    }
+    // println!("m: {:?}", m);
+    // println!("n: {}", n);
+    let mut asap = ASAP::new(n);
+    let (pair, prob, ms_curr, vs_curr) = asap.run_asap(&m);
+    {
+        let id_to_index = id_to_index.clone();
+        let prob = prob.clone();
+        let ms_curr = ms_curr.clone();
+        thread::spawn(move || {
+            crate::plot_ratings::plot_ratings(
+                "ratings.log",
+                "ratings_graph",
+                &ms_curr,
+                &id_to_index,
+                &prob,
+            )
+            .unwrap();
+        });
+    }
+    {
+        let index_to_id = index_to_id.clone();
+        let ms_curr = ms_curr.clone();
+        let vs_curr = vs_curr.clone();
+        let with_rid = with_rid.clone();
+        thread::spawn(move || {
+            let items: Vec<_> = ms_curr
+                .iter()
+                .zip(vs_curr.iter())
+                .enumerate()
+                .filter_map(|(i, (&m, &v))| {
+                    index_to_id
+                        .get(&i)
+                        .and_then(|&id| with_rid.get(&id).map(|t| (t.todo.clone(), m, v)))
+                })
+                .collect();
+            plot_ci(items, "ratings_ci.html").unwrap();
+        });
+    }
+    // assign an id / add [[rid::]] to a random todo in without_rid
+    if !without_rid.is_empty() && (pair.0 == n - 1 || pair.1 == n - 1) {
+        let ix = n - 1;
+        let rid = with_rid.iter().map(|(id, _)| id).max().unwrap_or(&0usize) + 1;
+        let mut rng = rand::thread_rng();
+        let idx = rng.gen_range(0..without_rid.len());
+        let todo = without_rid.swap_remove(idx);
+        let new_line = if let Some(pos) = EMOJIS.iter().filter_map(|e| todo.todo.find(e)).min() {
+            format!(
+                "{} [[rid::{}]] {}",
+                &todo.todo[..pos],
+                rid,
+                &todo.todo[pos..]
+            )
+        } else {
+            format!("{} [[rid::{}]]", todo.todo, rid)
+        };
+        with_rid.insert(rid, todo.clone());
+        index_to_id.insert(ix, rid);
+        id_to_index.insert(rid, ix);
+        replace_line_in_file(&todo.file, todo.line_num, &new_line)?;
+    }
+    let pair = pair.map(|i| index_to_id.get(&i).unwrap());
+    pair.for_each(|id| {
+        let t = with_rid.get(id).unwrap();
+        println!("{} ({}:{})", t.todo, t.file, t.line_num);
+    });
+    print!("Enter 1 or 2: ");
+    io::stdout().flush()?;
+    let c = console::Term::stdout().read_char()?;
+    println!();
+    let mut file = if let Ok(file) = File::options().append(true).open("ratings.log") {
+        file
+    } else {
+        File::create("ratings.log")?
+    };
+    writeln!(
+        file,
+        "{},{}",
+        if c == '1' { pair.0 } else { pair.1 },
+        if c == '1' { pair.1 } else { pair.0 }
+    )?;
+    Ok(())
+}
+#[derive(Clone)]
+struct Todo {
+    file: String,
+    line_num: usize,
+    todo: String,
+}
+fn get_todos() -> io::Result<(HashMap<usize, Todo>, Vec<Todo>)> {
+    let command_output = Command::new("rg")
+        .args(&[r"^\s*- \[ \]", ".", "-n"])
+        .output()?;
+    let output = String::from_utf8_lossy(&command_output.stdout);
+    if !command_output.status.success() {
+        println!("Error running rg, is it installed?");
+    }
+    let mut with_rid = HashMap::new();
+    let mut without_rid = Vec::new();
+    for line in output.lines() {
+        let parts: Vec<&str> = line.splitn(3, ':').collect();
+        if parts.len() == 3 {
+            let line = parts[2];
+            let todo = Todo {
+                file: parts[0].to_string(),
+                line_num: parts[1].parse().unwrap(),
+                todo: line.to_string(),
+            };
+            if let Some(start) = line.find("[[rid::") {
+                if let Some(end) = line[start..].find("]]") {
+                    if let Ok(rid) = line[start + 7..start + end].parse() {
+                        with_rid.insert(rid, todo);
+                    } else {
+                        println!("Invalid rid: {}", &line[start + 7..start + end]);
+                    }
+                } else {
+                    println!("Invalid rid: {}", &line[start..]);
+                }
+            } else {
+                without_rid.push(todo);
+            }
+        }
+    }
+    Ok((with_rid, without_rid))
+}
+fn replace_line_in_file(file: &str, line_num: usize, new_content: &str) -> io::Result<()> {
+    let content = std::fs::read_to_string(file)?;
+    let mut lines: Vec<String> = content.lines().map(String::from).collect();
+    if line_num > lines.len() {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            format!("line {} is out of bounds", line_num),
+        ));
+    }
+    lines[line_num - 1] = new_content.to_string();
+    std::fs::write(file, lines.join("\n"))?;
+    Ok(())
+}
+</file>
+
+<file path="web_service.rs">
+use axum::{
+    extract::State,
+    http::StatusCode,
+    response::IntoResponse,
+    routing::{get},
+    Json, Router,
+};
+use serde::{Deserialize, Serialize};
+use std::collections::{HashMap, HashSet};
+use std::sync::{Arc, Mutex};
+use tower_http::cors::{Any, CorsLayer};
+use tokio::net::TcpListener;
+use crate::asap_cpu::ASAP;
+// Type for storing our application state
+pub struct AppState {
+    // Store comparisons with task content (not IDs)
+    comparisons: Mutex<Vec<ContentComparison>>,
+}
+// Task info using content as the primary identifier
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
+pub struct TaskInfo {
+    content: String,
+    completed: bool,
+}
+// Comparison with content-based task identification
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ContentComparison {
+    task_a_content: String,
+    task_b_content: String,
+    winner_content: String,
+    timestamp: String,
+}
+// For backward compatibility in responses
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LegacyComparison {
+    task_a_id: usize,
+    task_b_id: usize,
+    winner_id: usize,
+    timestamp: String,
+}
+#[derive(Debug, Serialize, Deserialize)]
+pub struct RankedTask {
+    content: String,
+    score: f64,
+    rank: usize,
+}
+// Requests and responses
+#[derive(Debug, Deserialize)]
+pub struct AddComparisonRequest {
+    task_a_content: String,
+    task_b_content: String,
+    winner_content: String,
+}
+#[derive(Debug, Serialize)]
+pub struct ComparisonsResponse {
+    comparisons: Vec<LegacyComparison>,
+}
+#[derive(Debug, Serialize)]
+pub struct RankingsResponse {
+    rankings: Vec<RankedTask>,
+}
+pub async fn run_web_service() {
+    // Initialize tracing for better logging
+    tracing_subscriber::fmt::init();
+    // Create the application state
+    let app_state = Arc::new(AppState {
+        comparisons: Mutex::new(Vec::new()),
+    });
+    // Define CORS policy to allow requests from frontend
+    let cors = CorsLayer::new()
+        .allow_origin(Any)
+        .allow_methods(Any)
+        .allow_headers(Any);
+    // Create our API router
+    let app = Router::new()
+        .route("/health", get(health_check))
+        .route("/comparisons", get(get_comparisons).post(add_comparison))
+        .route("/rankings", get(get_rankings))
+        .with_state(app_state)
+        .layer(cors);
+    // Run our service
+    let port = std::env::var("PORT").unwrap_or_else(|_| "3000".to_string());
+    let port = port.parse::<u16>().expect("PORT must be a number");
+    let addr = std::net::SocketAddr::from(([0, 0, 0, 0], port));
+    tracing::info!("Listening on {}", addr);
+    let listener = TcpListener::bind(addr).await.unwrap();
+    axum::serve(listener, app).await.unwrap();
+}
+// Health check endpoint
+async fn health_check() -> impl IntoResponse {
+    StatusCode::OK
+}
+// Get all comparisons
+async fn get_comparisons(State(state): State<Arc<AppState>>) -> impl IntoResponse {
+    let comparisons = state.comparisons.lock().unwrap();
+    // Convert content comparisons to legacy format for backward compatibility
+    let mut content_to_id = HashMap::new();
+    let mut next_id = 1;
+    let legacy_comparisons: Vec<LegacyComparison> = comparisons
+        .iter()
+        .map(|comp| {
+            // Assign IDs to task content
+            let task_a_id = *content_to_id
+                .entry(comp.task_a_content.clone())
+                .or_insert_with(|| {
+                    let id = next_id;
+                    next_id += 1;
+                    id
+                });
+            let task_b_id = *content_to_id
+                .entry(comp.task_b_content.clone())
+                .or_insert_with(|| {
+                    let id = next_id;
+                    next_id += 1;
+                    id
+                });
+            let winner_id = if comp.winner_content == comp.task_a_content {
+                task_a_id
+            } else {
+                task_b_id
+            };
+            LegacyComparison {
+                task_a_id,
+                task_b_id,
+                winner_id,
+                timestamp: comp.timestamp.clone(),
+            }
+        })
+        .collect();
+    Json(ComparisonsResponse {
+        comparisons: legacy_comparisons,
+    })
+}
+// Add a new comparison using task content
+async fn add_comparison(
+    State(state): State<Arc<AppState>>,
+    Json(payload): Json<AddComparisonRequest>,
+) -> impl IntoResponse {
+    // Validate that the winner content matches one of the tasks
+    if payload.winner_content != payload.task_a_content && 
+       payload.winner_content != payload.task_b_content {
+        return (StatusCode::BAD_REQUEST, Json(serde_json::json!({
+            "error": "Winner content must match either task_a_content or task_b_content"
+        }))).into_response();
+    }
+    // Create the new comparison with content
+    let new_comparison = ContentComparison {
+        task_a_content: payload.task_a_content,
+        task_b_content: payload.task_b_content,
+        winner_content: payload.winner_content,
+        timestamp: chrono::Utc::now().to_rfc3339(),
+    };
+    // Add the comparison to our list
+    let mut comparisons = state.comparisons.lock().unwrap();
+    comparisons.push(new_comparison.clone());
+    // Convert to legacy format for response
+    let mut content_to_id = HashMap::new();
+    content_to_id.insert(new_comparison.task_a_content.clone(), 1);
+    content_to_id.insert(new_comparison.task_b_content.clone(), 2);
+    let winner_id = if new_comparison.winner_content == new_comparison.task_a_content {
+        1
+    } else {
+        2
+    };
+    let legacy_comparison = LegacyComparison {
+        task_a_id: 1,
+        task_b_id: 2,
+        winner_id,
+        timestamp: new_comparison.timestamp,
+    };
+    (StatusCode::CREATED, Json(legacy_comparison)).into_response()
+}
+// Get rankings using the ASAP algorithm based on task content
+async fn get_rankings(State(state): State<Arc<AppState>>) -> impl IntoResponse {
+    let comparisons = state.comparisons.lock().unwrap();
+    // Extract unique task contents from comparisons
+    let mut unique_tasks = HashSet::new();
+    for comp in comparisons.iter() {
+        unique_tasks.insert(comp.task_a_content.clone());
+        unique_tasks.insert(comp.task_b_content.clone());
+    }
+    let tasks: Vec<String> = unique_tasks.into_iter().collect();
+    // If we don't have enough tasks or comparisons, return an empty response
+    if tasks.len() < 2 || comparisons.is_empty() {
+        return Json(RankingsResponse { rankings: Vec::new() }).into_response();
+    }
+    // Map task content to index
+    let content_to_index: HashMap<String, usize> = tasks
+        .iter()
+        .enumerate()
+        .map(|(i, content)| (content.clone(), i))
+        .collect();
+    // Convert comparisons to matrix format for ASAP
+    let n = tasks.len();
+    let mut m = vec![vec![0; n]; n];
+    for comp in comparisons.iter() {
+        if let (Some(&winner_idx), Some(&loser_idx)) = (
+            content_to_index.get(&comp.winner_content),
+            if comp.winner_content == comp.task_a_content {
+                content_to_index.get(&comp.task_b_content)
+            } else {
+                content_to_index.get(&comp.task_a_content)
+            },
+        ) {
+            m[winner_idx][loser_idx] += 1;
+        }
+    }
+    // Run the ASAP algorithm to get ratings
+    let mut asap = ASAP::new(n);
+    let (_, _, ms_curr, _) = asap.run_asap(&m);
+    // Create the rankings response
+    let mut scores: Vec<(String, f64)> = content_to_index
+        .iter()
+        .map(|(content, &index)| (content.clone(), ms_curr[index]))
+        .collect();
+    // Sort by score (highest first)
+    scores.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+    // Build the final rankings
+    let rankings: Vec<RankedTask> = scores
+        .iter()
+        .enumerate()
+        .map(|(rank, (content, score))| RankedTask {
+            content: content.clone(),
+            score: *score,
+            rank: rank + 1, // 1-based ranking
+        })
+        .collect();
+    Json(RankingsResponse { rankings }).into_response()
+}
+</file>
+
+</files>

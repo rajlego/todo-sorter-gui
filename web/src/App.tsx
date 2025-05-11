@@ -5,7 +5,7 @@ import ComparisonLog from './components/ComparisonLog';
 import TaskRankings from './components/TaskRankings';
 import Editor from './components/Editor';
 import { extractTasks, comparisonsToCSV, generateId } from './utils/markdownUtils';
-import { comparisonsApi, healthCheck, tasksApi, rankingsApi } from './utils/apiClient';
+import { comparisonsApi, healthCheck, rankingsApi } from './utils/apiClient';
 import type { Comparison, Task } from './utils/markdownUtils';
 import type { RankedTask } from './utils/apiClient';
 
@@ -20,35 +20,9 @@ function App() {
   const [isApiConnected, setIsApiConnected] = useState<boolean>(false);
   const [rankedTasks, setRankedTasks] = useState<RankedTask[]>([]);
   const [isLoadingRankings, setIsLoadingRankings] = useState<boolean>(false);
-  const [registeredTasks, setRegisteredTasks] = useState<Set<string>>(new Set());
 
-  // Extract tasks from markdown
+  // Extract tasks from markdown - this is now the single source of truth
   const tasks = extractTasks(markdownContent);
-  
-  // Get only tasks that are registered with the API
-  const getRegisteredTasks = useCallback(() => {
-    if (!isApiConnected) return tasks;
-    return tasks.filter(task => registeredTasks.has(task.content));
-  }, [tasks, registeredTasks, isApiConnected]);
-
-  // Fetch tasks from API and update registeredTasks
-  const fetchApiTasks = async () => {
-    if (!isApiConnected) return [];
-    
-    try {
-      const apiTasks = await tasksApi.getAllTasks();
-      console.log('Fetched tasks from API:', apiTasks);
-      
-      // Update registeredTasks with task contents
-      const taskContents = new Set(apiTasks.map(t => t.content));
-      setRegisteredTasks(taskContents);
-      
-      return apiTasks;
-    } catch (error) {
-      console.error('Failed to fetch tasks from API:', error);
-      return [];
-    }
-  };
 
   // Direct content matching update method
   const updateMarkdownWithRankingsByContent = async (): Promise<boolean> => {
@@ -116,56 +90,10 @@ function App() {
     }
   };
 
-  // Update markdown with rankings (now calls the content method)
+  // Update markdown with rankings calls the content method
   const updateMarkdownWithRankings = async (): Promise<boolean> => {
     console.log('Starting updateMarkdownWithRankings');
     return updateMarkdownWithRankingsByContent();
-  };
-
-  // Detect and register new tasks with the API
-  const detectAndRegisterNewTasks = async (newMarkdown: string) => {
-    if (!isApiConnected) return;
-    
-    // Extract tasks from new markdown
-    const currentTasks = extractTasks(newMarkdown);
-    console.log('Current tasks in markdown:', currentTasks);
-    
-    try {
-      // Get existing tasks from API
-      const apiTasks = await tasksApi.getAllTasks();
-      const apiTaskContents = new Set(apiTasks.map(t => t.content));
-      console.log('Existing task contents in API:', apiTaskContents);
-      
-      // Find new tasks by comparing content
-      const newTasks = currentTasks.filter(task => !apiTaskContents.has(task.content));
-      
-      if (newTasks.length > 0) {
-        console.log(`Found ${newTasks.length} new tasks to register with API:`, newTasks);
-        
-        // Register each new task with the API
-        for (const task of newTasks) {
-          try {
-            await tasksApi.addTask({
-              content: task.content,
-              completed: task.completed,
-              line: task.line
-            });
-            console.log(`Successfully registered new task with API: "${task.content}"`);
-            
-            // Update registeredTasks
-            setRegisteredTasks(prev => new Set([...prev, task.content]));
-          } catch (error) {
-            console.error(`Failed to register task "${task.content}" with API:`, error);
-          }
-        }
-        
-        setApiStatus(`Registered ${newTasks.length} new tasks with API`);
-      } else {
-        console.log('No new tasks to register with API');
-      }
-    } catch (error) {
-      console.error('Error detecting and registering new tasks:', error);
-    }
   };
 
   // Fetch rankings from API
@@ -197,48 +125,6 @@ function App() {
     }
   };
 
-  // Sync local tasks to API
-  const syncTasksToAPI = async (localTasks: Task[]) => {
-    if (!isApiConnected || localTasks.length === 0) return;
-    
-    try {
-      // Get existing tasks from API
-      const apiTasks = await tasksApi.getAllTasks();
-      const apiTaskContents = new Set(apiTasks.map(t => t.content));
-      
-      // Register any new tasks with the API
-      let newTasksCount = 0;
-      for (const task of localTasks) {
-        // Skip if this task is already in the API
-        if (apiTaskContents.has(task.content)) continue;
-        
-        try {
-          await tasksApi.addTask({
-            content: task.content,
-            completed: task.completed,
-            line: task.line
-          });
-          apiTaskContents.add(task.content);
-          newTasksCount++;
-        } catch (error) {
-          console.error(`Failed to register task ${task.id} with API:`, error);
-        }
-      }
-      
-      // Update registeredTasks
-      setRegisteredTasks(apiTaskContents);
-      
-      if (newTasksCount > 0) {
-        setApiStatus(`Synchronized ${newTasksCount} new tasks with API`);
-      } else {
-        setApiStatus('Tasks synchronized with API');
-      }
-    } catch (error) {
-      console.error('Failed to sync tasks with API:', error);
-      setApiError('Failed to sync tasks with API');
-    }
-  };
-
   // Check API connection on mount
   useEffect(() => {
     const checkApiConnection = async () => {
@@ -246,15 +132,9 @@ function App() {
         const isHealthy = await healthCheck();
         setIsApiConnected(isHealthy);
         if (isHealthy) {
-          setApiStatus('Connected to Railway API');
+          setApiStatus('Connected to API');
           
           try {
-            // Get existing tasks from API and update registeredTasks
-            const apiTasks = await fetchApiTasks();
-            
-            // Sync local tasks with API
-            await syncTasksToAPI(tasks);
-            
             // If connected, load data from API
             const apiComparisons = await comparisonsApi.getAllComparisons();
             if (apiComparisons.length > 0) {
@@ -269,7 +149,7 @@ function App() {
             loadFromLocalStorage();
           }
         } else {
-          setApiError('Not connected to Railway API, using local storage');
+          setApiError('Not connected to API, using local storage');
           loadFromLocalStorage();
         }
       } catch (error) {
@@ -306,13 +186,6 @@ function App() {
     checkApiConnection();
   }, []);
 
-  // Sync tasks whenever markdown content changes and we're connected to API
-  useEffect(() => {
-    if (isApiConnected) {
-      syncTasksToAPI(tasks);
-    }
-  }, [markdownContent, isApiConnected]);
-
   // Update rankings when comparisons change
   useEffect(() => {
     if (isApiConnected && comparisons.length > 0) {
@@ -324,10 +197,7 @@ function App() {
   const handleEditorChange = useCallback((value: string) => {
     setMarkdownContent(value);
     localStorage.setItem('markdown-content', value);
-    
-    // Detect and register any new tasks that were added
-    detectAndRegisterNewTasks(value);
-  }, [isApiConnected]);
+  }, []);
 
   // Handle comparison completion
   const handleComparisonComplete = async (taskA: Task, taskB: Task, winner: Task) => {
@@ -447,11 +317,6 @@ function App() {
                 {JSON.stringify(tasks, null, 2)}
               </pre>
               
-              <h3 className="font-bold mt-3">Registered Tasks:</h3>
-              <pre className="bg-white p-2 rounded mt-1">
-                {JSON.stringify(Array.from(registeredTasks), null, 2)}
-              </pre>
-              
               <h3 className="font-bold mt-3">Rankings:</h3>
               <pre className="bg-white p-2 rounded mt-1">
                 {JSON.stringify(rankedTasks, null, 2)}
@@ -462,70 +327,6 @@ function App() {
                 {JSON.stringify(comparisons.slice(0, 3), null, 2)}
                 {comparisons.length > 3 && ` ... (${comparisons.length - 3} more)`}
               </pre>
-              
-              <div className="mt-3 flex gap-2">
-                <button
-                  onClick={async () => {
-                    console.log('Debug - Comparing tasks and rankings...');
-                    if (!isApiConnected) return;
-                    
-                    try {
-                      const rankings = await rankingsApi.getRankings();
-                      console.log('= Task ID Comparison =');
-                      console.log('Tasks from markdown:');
-                      tasks.forEach(task => console.log(`  ${task.id}: "${task.content}"`));
-                      console.log('Tasks from API:');
-                      rankings.forEach(task => console.log(`  ${task.id}: "${task.content}"`));
-                      
-                      // Look for matches
-                      console.log('= Content Matches =');
-                      tasks.forEach(t1 => {
-                        const match = rankings.find(t2 => t1.content === t2.content);
-                        console.log(`Task "${t1.content}" - markdown ID: ${t1.id}, API ID: ${match ? match.id : 'NO MATCH'}`);
-                      });
-                    } catch (error) {
-                      console.error('Error comparing tasks:', error);
-                    }
-                  }}
-                  className="px-2 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
-                >
-                  Debug Compare Tasks with API
-                </button>
-                
-                <button
-                  onClick={async () => {
-                    if (!window.confirm('This will clear the current tasks on the API and re-sync all tasks from the markdown. Continue?')) return;
-                    
-                    if (!isApiConnected) {
-                      console.error('API not connected');
-                      return;
-                    }
-                    
-                    try {
-                      console.log('Force syncing all tasks...');
-                      for (const task of tasks) {
-                        await tasksApi.addTask({
-                          content: task.content,
-                          completed: task.completed,
-                          line: task.line
-                        });
-                        console.log(`Registered task: ${task.content}`);
-                      }
-                      console.log('Task sync complete');
-                      
-                      // Update registeredTasks
-                      setRegisteredTasks(new Set(tasks.map(t => t.content)));
-                      
-                      alert('Task sync complete. You may need to refresh the page to see changes.');
-                    } catch (error) {
-                      console.error('Error syncing tasks:', error);
-                    }
-                  }}
-                  className="px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600"
-                >
-                  Force Re-Sync All Tasks to API
-                </button>
-              </div>
             </div>
           </details>
         </div>
@@ -599,34 +400,15 @@ function App() {
                     'Update Markdown with Rankings'
                   )}
                 </button>
-                
-                {/* Add a direct content-based update button for testing */}
-                {process.env.NODE_ENV !== 'production' && (
-                  <button
-                    onClick={async () => {
-                      console.log('Testing direct content matching update...');
-                      const success = await updateMarkdownWithRankingsByContent();
-                      if (success) {
-                        console.log('Direct update successful');
-                      } else {
-                        console.error('Direct update failed');
-                      }
-                    }}
-                    className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-                    disabled={!isApiConnected || isLoadingRankings || comparisons.length === 0}
-                  >
-                    Direct Content Match Update
-                  </button>
-                )}
               </div>
             </div>
             
             {/* Right side: Comparison View and Rankings */}
             <div className="lg:col-span-6 space-y-6">
               <div>
-                {/* Use only registered tasks for comparison */}
+                {/* Use tasks directly from markdown */}
                 <ComparisonView 
-                  tasks={getRegisteredTasks()} 
+                  tasks={tasks} 
                   onComparisonComplete={handleComparisonComplete} 
                 />
               </div>

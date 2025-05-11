@@ -1,7 +1,7 @@
 - [x] Create a new frontend directory (web/)
-- [ ] Initialize a Vite + React + TypeScript project
-- [ ] Set up Tailwind CSS
-- [ ] Install Monaco Editor and set up API client for Railway backend
+- [ ] Initialize a Vite + React + TypeScript project [[rid::2]]
+- [ ] Set up Tailwind CSS [[rid::3]]
+- [ ] Install Monaco Editor and set up API client for Railway backend [[rid::1]]
 - [ ] Add a basic Netlify configuration file
 - [ ] Add a placeholder page and test the dev server
 
