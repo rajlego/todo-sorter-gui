@@ -3,11 +3,13 @@ nixPkgs = ["gcc", "binutils", "openssl", "pkg-config", "nodejs-18_x", "yarn"]
 
 [phases.build]
 cmds = [
-  "cd web && yarn install && yarn build",
-  "mkdir -p /app/static",
-  "cp -r web/dist/* /app/static/ || true",
-  "SQLX_OFFLINE=true RUSTC_VERSION=1.82.0 cargo build --release",
-  "chmod +x start.sh"
+  "pwd && ls -la",
+  "mkdir -p static",
+  "cd web && yarn install && yarn build && echo 'Web build complete' && cd ..",
+  "cp -r web/dist/* static/ || echo 'Failed to copy web/dist, creating fallback'",
+  "[ -z \"$(ls -A static)\" ] && echo '<html><head><title>Todo Sorter</title></head><body><h1>Todo Sorter API</h1></body></html>' > static/index.html || echo 'Static files exist'",
+  "ls -la static/",
+  "SQLX_OFFLINE=true cargo build --release"
 ]
 
 [start]

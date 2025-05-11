@@ -32,7 +32,13 @@ RUN rm -f package-lock.json
 WORKDIR /app
 
 # Create static directory from web/dist
-RUN mkdir -p static && cp -r web/dist/* static/
+RUN mkdir -p static && cp -r web/dist/* static/ || echo "Failed to copy web files" && \
+    if [ -z "$(ls -A static)" ]; then \
+        echo '<html><head><title>Todo Sorter</title></head><body><h1>Todo Sorter API</h1></body></html>' > static/index.html; \
+    fi
+
+# Make start.sh executable
+RUN chmod +x start.sh
 
 # Enable SQLx offline mode
 ENV SQLX_OFFLINE=true
@@ -57,14 +63,18 @@ COPY --from=builder /app/target/release/sorter /app/sorter
 COPY --from=builder /app/static /app/static
 COPY --from=builder /app/migrations /app/migrations
 COPY --from=builder /app/.sqlx /app/.sqlx
+COPY --from=builder /app/start.sh /app/start.sh
+
+# Make start.sh executable
+RUN chmod +x /app/start.sh
 
 # Set environment variables
 ENV PORT=3000
-ENV STATIC_DIR=static
+ENV STATIC_DIR=/app/static
 ENV SQLX_OFFLINE=true
 
 # Expose the port
 EXPOSE 3000
 
-# Run the application
-CMD ["/app/sorter", "api"] 
+# Run the application using our start script
+CMD ["/app/start.sh"] 
