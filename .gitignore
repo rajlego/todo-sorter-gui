@@ -41,3 +41,5 @@ Cargo.lock
 
 # Project specific
 tasks.md
+# Local Netlify folder
+.netlify
