@@ -3,6 +3,8 @@ export interface Task {
   content: string;
   completed: boolean;
   line: number; // Line number in the markdown file
+  rank?: number; // Optional rank from backend
+  score?: number; // Optional score from backend
 }
 
 export interface Comparison {
