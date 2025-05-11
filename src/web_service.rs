@@ -512,6 +512,13 @@ async fn health_check(
     let railway_environment = std::env::var("RAILWAY_ENVIRONMENT").unwrap_or_default();
     let railway_service = std::env::var("RAILWAY_SERVICE_NAME").unwrap_or_default();
     
+    // Optional note for offline mode
+    let offline_note = if is_offline_mode { 
+        Some("Database functions will not work in offline mode") 
+    } else { 
+        None 
+    };
+    
     let info = serde_json::json!({
         "status": if db_status == "connected" { 
             "healthy" 
@@ -526,7 +533,7 @@ async fn health_check(
             "status": db_status,
             "url_masked": db_url_masked,
             "offline_mode": sqlx_offline,
-            "note": is_offline_mode ? "Database functions will not work in offline mode" : null,
+            "note": offline_note,
         },
         "deployment": {
             "platform": if on_railway { "railway" } else { "unknown" },
