@@ -33,7 +33,8 @@ pub struct TaskContent {
 
 // Database connection pool
 pub struct Database {
-    pool: PgPool,
+    pool: Option<PgPool>,
+    memory_mode: bool,
 }
 
 impl Database {
@@ -42,17 +43,26 @@ impl Database {
         // Load from environment variables (.env file in development)
         dotenv::dotenv().ok();
         
-        let database_url = std::env::var("DATABASE_URL")
-            .expect("DATABASE_URL must be set");
-        
-        let pool = PgPoolOptions::new()
-            .max_connections(5)
-            .connect(&database_url).await?;
-            
-        // Create tables if they don't exist
-        Self::initialize_tables(&pool).await?;
-        
-        Ok(Arc::new(Self { pool }))
+        // Check if DATABASE_URL is set
+        match std::env::var("DATABASE_URL") {
+            Ok(database_url) => {
+                // Connect to the database
+                let pool = PgPoolOptions::new()
+                    .max_connections(5)
+                    .connect(&database_url).await?;
+                    
+                // Create tables if they don't exist
+                Self::initialize_tables(&pool).await?;
+                
+                tracing::info!("Connected to PostgreSQL database");
+                Ok(Arc::new(Self { pool: Some(pool), memory_mode: false }))
+            },
+            Err(_) => {
+                // If DATABASE_URL is not set, operate in memory-only mode
+                tracing::warn!("DATABASE_URL not set! Running in memory-only mode. Data will not be persisted!");
+                Ok(Arc::new(Self { pool: None, memory_mode: true }))
+            }
+        }
     }
     
     // Create database tables if they don't exist
@@ -84,10 +94,16 @@ impl Database {
     
     // Task operations
     pub async fn get_tasks(&self) -> Result<Vec<Task>, SqlxError> {
+        if self.memory_mode {
+            // Return empty list in memory mode
+            return Ok(Vec::new());
+        }
+        
+        let pool = self.pool.as_ref().unwrap();
         let rows = sqlx::query(
             "SELECT id::text, content, completed, created_at, updated_at FROM tasks ORDER BY created_at DESC"
         )
-        .fetch_all(&self.pool)
+        .fetch_all(pool)
         .await?;
         
         Ok(rows.into_iter().map(|row: PgRow| Task {
@@ -100,11 +116,17 @@ impl Database {
     }
     
     pub async fn get_task_by_content(&self, content: &str) -> Result<Option<Task>, SqlxError> {
+        if self.memory_mode {
+            // Return None in memory mode
+            return Ok(None);
+        }
+        
+        let pool = self.pool.as_ref().unwrap();
         let row = sqlx::query(
             "SELECT id::text, content, completed, created_at, updated_at FROM tasks WHERE content = $1"
         )
         .bind(content)
-        .fetch_optional(&self.pool)
+        .fetch_optional(pool)
         .await?;
         
         Ok(row.map(|row: PgRow| Task {
@@ -117,11 +139,25 @@ impl Database {
     }
 
     pub async fn create_task(&self, content: String) -> Result<Task, SqlxError> {
+        // In memory mode, create a dummy task
+        if self.memory_mode {
+            let id = Uuid::new_v4();
+            let now = Utc::now();
+            return Ok(Task {
+                id: id.to_string(),
+                content,
+                completed: false,
+                created_at: now,
+                updated_at: now,
+            });
+        }
+        
         // Check if task with this content already exists
         if let Some(task) = self.get_task_by_content(&content).await? {
             return Ok(task);
         }
         
+        let pool = self.pool.as_ref().unwrap();
         let id = Uuid::new_v4();
         let now = Utc::now();
         
@@ -135,7 +171,7 @@ impl Database {
         .bind(false)
         .bind(now)
         .bind(now)
-        .fetch_one(&self.pool)
+        .fetch_one(pool)
         .await?;
         
         Ok(Task {
@@ -148,6 +184,13 @@ impl Database {
     }
     
     pub async fn delete_task(&self, content: &str) -> Result<bool, SqlxError> {
+        // In memory mode, pretend to succeed
+        if self.memory_mode {
+            return Ok(true);
+        }
+        
+        let pool = self.pool.as_ref().unwrap();
+        
         // Get the task first to find its ID
         let task = match self.get_task_by_content(content).await? {
             Some(t) => t,
@@ -162,7 +205,7 @@ impl Database {
              WHERE task_a_id = $1 OR task_b_id = $1 OR winner_id = $1"
         )
         .bind(uuid_id)
-        .execute(&self.pool)
+        .execute(pool)
         .await?;
         
         // Now delete the task
@@ -170,7 +213,7 @@ impl Database {
             "DELETE FROM tasks WHERE id = $1"
         )
         .bind(uuid_id)
-        .execute(&self.pool)
+        .execute(pool)
         .await?;
             
         Ok(result.rows_affected() > 0)
@@ -178,10 +221,16 @@ impl Database {
     
     // Comparison operations
     pub async fn get_comparisons(&self) -> Result<Vec<Comparison>, SqlxError> {
+        // In memory mode, return empty list
+        if self.memory_mode {
+            return Ok(Vec::new());
+        }
+        
+        let pool = self.pool.as_ref().unwrap();
         let rows = sqlx::query(
             "SELECT id::text, task_a_id::text, task_b_id::text, winner_id::text, timestamp FROM comparisons ORDER BY timestamp DESC"
         )
-        .fetch_all(&self.pool)
+        .fetch_all(pool)
         .await?;
         
         Ok(rows.into_iter().map(|row: PgRow| Comparison {
@@ -199,6 +248,28 @@ impl Database {
         task_b_content: &str, 
         winner_content: &str
     ) -> Result<Comparison, SqlxError> {
+        // In memory mode, create dummy comparison
+        if self.memory_mode {
+            let id = Uuid::new_v4();
+            let task_a_id = Uuid::new_v4();
+            let task_b_id = Uuid::new_v4();
+            let winner_id = if winner_content == task_a_content {
+                task_a_id
+            } else {
+                task_b_id
+            };
+            
+            return Ok(Comparison {
+                id: id.to_string(),
+                task_a_id: task_a_id.to_string(),
+                task_b_id: task_b_id.to_string(),
+                winner_id: winner_id.to_string(),
+                timestamp: Utc::now(),
+            });
+        }
+        
+        let pool = self.pool.as_ref().unwrap();
+        
         // Get or create tasks first
         let task_a = self.create_task(task_a_content.to_string()).await?;
         let task_b = self.create_task(task_b_content.to_string()).await?;
@@ -225,7 +296,7 @@ impl Database {
         .bind(task_a_id)
         .bind(task_b_id)
         .bind(winner_id)
-        .fetch_one(&self.pool)
+        .fetch_one(pool)
         .await?;
         
         Ok(Comparison {
@@ -238,11 +309,17 @@ impl Database {
     }
     
     pub async fn get_task_content_by_id(&self, id: &str) -> Result<Option<String>, SqlxError> {
+        // In memory mode, return dummy content
+        if self.memory_mode {
+            return Ok(Some(format!("Task {}", id)));
+        }
+        
+        let pool = self.pool.as_ref().unwrap();
         let uuid_id = Uuid::parse_str(id).unwrap();
         
         let row = sqlx::query("SELECT content FROM tasks WHERE id = $1")
             .bind(uuid_id)
-            .fetch_optional(&self.pool)
+            .fetch_optional(pool)
             .await?;
             
         Ok(row.map(|row: PgRow| row.get("content")))

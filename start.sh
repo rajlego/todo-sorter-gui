@@ -24,6 +24,14 @@ if [ -z "$(ls -A "$STATIC_DIR")" ]; then
   echo '<html><head><title>Todo Sorter</title></head><body><h1>Todo Sorter API</h1><p>Frontend not found. Please check your deployment configuration.</p></body></html>' > "$STATIC_DIR/index.html"
 fi
 
+# Check for DATABASE_URL
+if [ -z "$DATABASE_URL" ]; then
+  echo "WARNING: DATABASE_URL is not set! Application will run in memory-only mode."
+  echo "Data will not be persisted across restarts."
+else
+  echo "DATABASE_URL is set. Will connect to the database."
+fi
+
 # Make the sorter binary executable if needed
 chmod +x ./target/release/sorter 2>/dev/null || true
 
@@ -38,6 +46,13 @@ else
   echo "ERROR: Could not find sorter binary"
   exit 1
 fi
+
+# Print environment variables for debugging
+echo "Environment variables:"
+echo "PORT=${PORT}"
+echo "STATIC_DIR=${STATIC_DIR}"
+echo "SQLX_OFFLINE=${SQLX_OFFLINE}"
+echo "DATABASE_URL=${DATABASE_URL:-(not set)}"
 
 # Start the application
 echo "Starting Todo Sorter API..."

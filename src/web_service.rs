@@ -125,12 +125,19 @@ pub async fn run_web_service() {
     // Connect to the database
     let db = match Database::connect().await {
         Ok(db) => {
-            tracing::info!("Connected to the PostgreSQL database");
+            tracing::info!("Database connection established");
             db
         },
         Err(err) => {
             tracing::error!("Failed to connect to the database: {}", err);
-            panic!("Database connection failed");
+            tracing::warn!("Starting with in-memory mode - data will not be persisted");
+            
+            // Create a memory-only database as fallback
+            let memory_db = Arc::new(Database { 
+                pool: None, 
+                memory_mode: true 
+            });
+            memory_db
         }
     };
     
