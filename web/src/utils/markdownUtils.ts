@@ -19,6 +19,7 @@ export interface Comparison {
  * @returns Array of Task objects
  */
 export const extractTasks = (markdown: string): Task[] => {
+  console.log('Extracting tasks from markdown...');
   const tasks: Task[] = [];
   const lines = markdown.split('\n');
   
@@ -26,15 +27,28 @@ export const extractTasks = (markdown: string): Task[] => {
     // Match Markdown task syntax: - [ ] Task description or - [x] Task description
     const taskMatch = line.match(/^-\s\[([ x])\]\s(.+)$/);
     if (taskMatch) {
+      // Check if this task already has ranking info and strip it for the task content
+      let content = taskMatch[2];
+      const rankingMatch = content.match(/^(.+?)\s+\|\s+Rank:\s+\d+\s+\|\s+Score:\s+[-\d.]+$/);
+      
+      if (rankingMatch) {
+        // Strip ranking info from content
+        content = rankingMatch[1];
+        console.log(`Found task with ranking info: "${content}"`);
+      }
+      
+      const taskId = `task-${index + 1}`; // Using 1-based index for task IDs to match backend
       tasks.push({
-        id: `task-${index + 1}`, // Using 1-based index for task IDs to match backend
-        content: taskMatch[2],
+        id: taskId,
+        content: content,
         completed: taskMatch[1] === 'x',
         line: index
       });
+      console.log(`Extracted task: id=${taskId}, line=${index}, content="${content}"`);
     }
   });
   
+  console.log(`Total tasks extracted: ${tasks.length}`);
   return tasks;
 };
 
