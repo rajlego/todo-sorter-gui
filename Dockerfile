@@ -28,7 +28,10 @@ COPY . .
 
 # Build the frontend
 WORKDIR /app/web
-RUN npm ci
+# Use npm install instead of npm ci to update the lock file
+RUN npm install
+# Install terser explicitly
+RUN npm install terser
 RUN npm run build
 
 # Go back to the main directory
