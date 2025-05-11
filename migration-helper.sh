@@ -1,6 +1,12 @@
 #!/bin/bash
 # Migration helper script for Railway deployment
 
+# Check if we should skip database operations
+if [ "${SQLX_OFFLINE}" = "true" ] && [ -z "${DATABASE_URL}" ]; then
+  echo "Running in SQLX_OFFLINE mode without DATABASE_URL. Skipping database operations."
+  exit 0
+fi
+
 # Function to check if PostgreSQL is available
 check_postgres() {
   if PGPASSWORD=${PGPASSWORD} psql -h ${PGHOST:-postgres} -U ${PGUSER:-postgres} -c "SELECT 1" > /dev/null 2>&1; then
@@ -44,6 +50,18 @@ create_database_if_not_exists() {
 
 # Main function to run migrations
 run_migrations() {
+  # If DATABASE_URL is not set, try to create it from PGHOST, PGUSER, etc.
+  if [ -z "${DATABASE_URL}" ]; then
+    echo "DATABASE_URL is not set. Trying to construct from individual parameters..."
+    if [ -n "${PGHOST}" ] && [ -n "${PGUSER}" ] && [ -n "${PGPASSWORD}" ]; then
+      export DATABASE_URL="postgres://${PGUSER}:${PGPASSWORD}@${PGHOST}:${PGPORT:-5432}/${PGDATABASE:-postgres}"
+      echo "Constructed DATABASE_URL: ${DATABASE_URL}"
+    else
+      echo "ERROR: Cannot construct DATABASE_URL. Missing one or more required parameters."
+      # Don't exit here; we'll still try to connect in case other methods work
+    fi
+  fi
+
   # Wait for PostgreSQL to be ready
   echo "Waiting for PostgreSQL..."
   for i in {1..30}; do
@@ -55,7 +73,7 @@ run_migrations() {
     sleep 1
     if [ $i -eq 30 ]; then
       echo "ERROR: PostgreSQL did not become ready in time."
-      # Continue anyway, migrations will fail but app might still work in offline mode
+      echo "Continuing without running migrations. Application may still work in offline mode."
       return 1
     fi
   done
@@ -99,5 +117,8 @@ run_migrations() {
 
 # Execute migrations if this script is run directly
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
-  run_migrations
+  run_migrations || {
+    echo "NOTE: Migration failures are non-fatal when SQLX_OFFLINE=true is set"
+    echo "Application will continue to start but may have limited functionality"
+  }
 fi 

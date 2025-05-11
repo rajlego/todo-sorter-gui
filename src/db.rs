@@ -67,14 +67,62 @@ pub async fn create_pool() -> PgPool {
         let _ = dotenv::dotenv();
     }
     
-    let database_url = env::var("DATABASE_URL")
-        .expect("DATABASE_URL environment variable must be set");
+    // Get database URL from environment
+    let database_url = match std::env::var("DATABASE_URL") {
+        Ok(url) => {
+            tracing::info!("Using DATABASE_URL from environment");
+            url
+        }
+        Err(_) => {
+            // If DATABASE_URL is not set, try to build it from individual components
+            let host = std::env::var("PGHOST").unwrap_or_else(|_| "localhost".to_string());
+            let port = std::env::var("PGPORT").unwrap_or_else(|_| "5432".to_string());
+            let user = std::env::var("PGUSER").unwrap_or_else(|_| "postgres".to_string());
+            let password = std::env::var("PGPASSWORD").unwrap_or_else(|_| "password".to_string());
+            let dbname = std::env::var("PGDATABASE").unwrap_or_else(|_| "todo_sorter".to_string());
+            
+            let url = format!("postgres://{}:{}@{}:{}/{}", user, password, host, port, dbname);
+            tracing::info!("Constructed DATABASE_URL from components");
+            url
+        }
+    };
     
-    PgPoolOptions::new()
-        .max_connections(5)
-        .connect(&database_url)
-        .await
-        .expect("Failed to connect to Postgres")
+    // Check if we need to disable SSL for Railway
+    let database_url = if database_url.contains("railway.app") && !database_url.contains("sslmode=") {
+        tracing::info!("Adding sslmode=require for Railway PostgreSQL");
+        format!("{}?sslmode=require", database_url)
+    } else {
+        database_url
+    };
+    
+    tracing::info!("Connecting to database...");
+    
+    // Create connection with retry logic for Railway startup
+    for attempt in 1..=5 {
+        match PgPoolOptions::new()
+            .max_connections(5)
+            .connect(&database_url)
+            .await
+        {
+            Ok(pool) => {
+                tracing::info!("Successfully connected to database");
+                return pool;
+            }
+            Err(err) => {
+                if attempt < 5 {
+                    let delay = 2_u64.pow(attempt as u32);
+                    tracing::warn!("Failed to connect to database (attempt {}/5): {}. Retrying in {} seconds...", 
+                        attempt, err, delay);
+                    tokio::time::sleep(tokio::time::Duration::from_secs(delay)).await;
+                } else {
+                    tracing::error!("Failed to connect to database after 5 attempts: {}", err);
+                    panic!("Failed to connect to Postgres: {}", err);
+                }
+            }
+        }
+    }
+    
+    unreachable!()
 }
 
 // Convenient struct to wrap around a pool
