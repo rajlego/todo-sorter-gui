@@ -2,7 +2,7 @@
 builder = "nixpacks"
 
 [deploy]
-startCommand = "SQLX_OFFLINE=true STATIC_DIR=/app/static ./target/release/sorter api"
+startCommand = "./start.sh"
 healthcheckPath = "/api/health"
 healthcheckTimeout = 100
 restartPolicyType = "on_failure"
