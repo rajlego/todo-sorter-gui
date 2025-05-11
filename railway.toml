@@ -1,20 +1,14 @@
 [build]
-builder = "nixpacks"
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
 
 [deploy]
 numReplicas = 1
-startCommand = "node index.js"
 sleepApplication = false
 restartPolicyType = "on_failure"
+startCommand = "/app/target/release/sorter api"
 
-[service.backend]
-name = "todo-sorter-api"
-path = "."
-startCommand = "./target/release/sorter api"
-
-[service.frontend]
-name = "todo-sorter-web"
-path = "web"
-envs = { PORT = "80" }
-startCommand = "nginx -g 'daemon off;'"
-healthcheckPath = "/" 
+# Environment variables
+[variables]
+PORT = "3000"
+STATIC_DIR = "/app/web/dist"

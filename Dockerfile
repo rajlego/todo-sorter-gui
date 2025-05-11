@@ -1,41 +1,37 @@
-# Build frontend
-FROM node:16-slim AS frontend-builder
-WORKDIR /app/frontend
-# Install build dependencies needed for native modules
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends python3 make g++ && \
-    rm -rf /var/lib/apt/lists/*
-# Copy only package files first to leverage Docker caching
-COPY web/package*.json ./
-RUN npm ci
-# Copy the rest of the frontend code
-COPY web/ ./
-# Build the frontend assets
-RUN npm run build
+# Use a single base image with both Node.js and Rust
+FROM rust:slim-bullseye
 
-# Build backend
-FROM rust:slim-bullseye AS backend-builder
+# Install Node.js
+RUN apt-get update && \
+    apt-get install -y curl ca-certificates pkg-config libssl-dev gnupg && \
+    curl -fsSL https://deb.nodesource.com/setup_18.x | bash - && \
+    apt-get install -y nodejs && \
+    apt-get install -y build-essential python3 make g++ && \
+    npm install -g yarn && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+# Set the working directory
 WORKDIR /app
-# Install backend dependencies
-RUN apt-get update && apt-get install -y pkg-config libssl-dev
-# Copy backend source code
+
+# Copy the entire project
 COPY . .
-# Build the backend binary
+
+# Build the frontend first
+WORKDIR /app/web
+RUN yarn install || npm install
+RUN yarn build || npm run build
+
+# Build the backend
+WORKDIR /app
 RUN cargo build --release
 
-# Final image
-FROM debian:bullseye-slim
-WORKDIR /app
-# Install runtime dependencies only
-RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/lists/*
-# Copy the compiled binary from backend builder
-COPY --from=backend-builder /app/target/release/sorter /app/
-# Copy static frontend files from frontend builder
-COPY --from=frontend-builder /app/frontend/dist /app/static
 # Set environment variables
 ENV PORT=3000
-ENV STATIC_DIR=static
+ENV STATIC_DIR=/app/web/dist
+
 # Expose the port
 EXPOSE 3000
+
 # Run the application
-CMD ["./sorter", "api"] 
+CMD ["/app/target/release/sorter", "api"] 
