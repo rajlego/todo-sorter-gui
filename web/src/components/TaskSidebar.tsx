@@ -1,36 +1,13 @@
 import React from 'react';
-
-interface Task {
-  id: string;
-  content: string;
-  completed: boolean;
-}
+import { extractTasks } from '../utils/markdownUtils';
+import type { Task } from '../utils/markdownUtils';
 
 interface TaskSidebarProps {
   markdown: string;
 }
 
 const TaskSidebar: React.FC<TaskSidebarProps> = ({ markdown }) => {
-  // Parse tasks from markdown
-  const extractTasks = (markdown: string): Task[] => {
-    const tasks: Task[] = [];
-    const lines = markdown.split('\n');
-    
-    lines.forEach((line, index) => {
-      // Match Markdown task syntax: - [ ] Task description or - [x] Task description
-      const taskMatch = line.match(/^-\s\[([ x])\]\s(.+)$/);
-      if (taskMatch) {
-        tasks.push({
-          id: `task-${index}`,
-          content: taskMatch[2],
-          completed: taskMatch[1] === 'x'
-        });
-      }
-    });
-    
-    return tasks;
-  };
-  
+  // Use the shared extractTasks function
   const tasks = extractTasks(markdown);
   
   return (

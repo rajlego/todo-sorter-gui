@@ -1,10 +1,5 @@
 import React, { useState, useEffect } from 'react';
-
-interface Task {
-  id: string;
-  content: string;
-  completed: boolean;
-}
+import type { Task } from '../utils/markdownUtils';
 
 interface ComparisonViewProps {
   tasks: Task[];
