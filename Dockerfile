@@ -2,6 +2,11 @@
 FROM node:18-alpine AS frontend-builder
 WORKDIR /app/frontend
 COPY web/package*.json ./
+# Install build dependencies needed for native modules
+RUN apk add --no-cache python3 make g++ 
+# Force npm to use the correct architecture for rollup
+ENV ROLLUP_SKIP_NODE_RESOLUTION=true
+# Install dependencies
 RUN npm ci
 COPY web/ ./
 RUN npm run build
