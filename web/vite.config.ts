@@ -12,8 +12,15 @@ export default defineConfig(({ mode }) => {
       react(),
     ],
     build: {
-      // Disable the use of native speed optimizations
+      // Force to not use native dependencies
+      target: 'es2015',
+      // Specifically tell Rollup to skip native module resolution
       rollupOptions: {
+        external: [],
+        treeshake: {
+          moduleSideEffects: 'no-external',
+          propertyReadSideEffects: false,
+        },
         output: {
           manualChunks: {
             'react-vendor': ['react', 'react-dom'],
@@ -23,6 +30,8 @@ export default defineConfig(({ mode }) => {
       }
     },
     define: {
+      // Force Rollup to skip native dependency resolution
+      'process.env.ROLLUP_SKIP_NODE_RESOLUTION': JSON.stringify('true'),
       // Pass Railway environment variables to the frontend
       'process.env.VITE_API_URL': JSON.stringify(env.VITE_API_URL || 'https://todo-sorter-api-production.up.railway.app'),
     },

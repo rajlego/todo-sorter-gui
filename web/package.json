@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "node build.js",
+    "build": "ROLLUP_SKIP_NODE_RESOLUTION=true node build.js",
     "lint": "eslint .",
     "preview": "vite preview"
   },
@@ -20,6 +20,11 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.25.0",
+    "@rollup/rollup-darwin-arm64": "4.9.5",
+    "@rollup/rollup-darwin-x64": "4.9.5",
+    "@rollup/rollup-linux-x64-gnu": "4.9.5",
+    "@rollup/rollup-linux-x64-musl": "4.9.5",
+    "@rollup/rollup-win32-x64-msvc": "4.9.5",
     "@types/node": "^22.15.17",
     "@types/react": "^19.1.2",
     "@types/react-dom": "^19.1.2",

@@ -3,6 +3,9 @@ import { build } from 'vite';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 
+// Force disable Rollup native modules
+process.env.ROLLUP_SKIP_NODE_RESOLUTION = 'true';
+
 const execPromise = promisify(exec);
 
 async function main() {
