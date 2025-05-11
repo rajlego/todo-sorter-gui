@@ -1,1 +1,1 @@
-web: cargo run --release -- api 
+web: ./target/release/sorter api 

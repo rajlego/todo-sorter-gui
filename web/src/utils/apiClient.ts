@@ -3,7 +3,7 @@ import type { Task, Comparison } from './markdownUtils';
 
 // Define API base URL
 const API_BASE_URL = process.env.NODE_ENV === 'production' 
-  ? 'https://todo-sorter-backend.up.railway.app' // Replace with your Railway URL when deployed
+  ? 'https://web-production-fa895.up.railway.app' // Railway URL
   : 'http://localhost:3000';
 
 // API client instance

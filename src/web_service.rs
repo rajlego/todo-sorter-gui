@@ -103,7 +103,9 @@ pub async fn run_web_service() {
         .layer(cors);
 
     // Run our service
-    let addr = std::net::SocketAddr::from(([0, 0, 0, 0], 3000));
+    let port = std::env::var("PORT").unwrap_or_else(|_| "3000".to_string());
+    let port = port.parse::<u16>().expect("PORT must be a number");
+    let addr = std::net::SocketAddr::from(([0, 0, 0, 0], port));
     tracing::info!("Listening on {}", addr);
     
     let listener = TcpListener::bind(addr).await.unwrap();
