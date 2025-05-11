@@ -89,7 +89,7 @@ pub async fn create_pool() -> Result<PgPool, sqlx::Error> {
     
     // Handle Railway proxy URLs (ballast.proxy.rlwy.net, gondola.proxy.rlwy.net, etc.)
     let database_url = if database_url.contains("proxy.rlwy.net") && !database_url.contains("sslmode=") {
-        tracing::info!("Adding sslmode=require for Railway proxy connection");
+        tracing::info!("Adding sslmode=require for Railway proxy connection at {}", database_url.split('@').nth(1).unwrap_or("unknown"));
         format!("{}?sslmode=require", database_url)
     } else if database_url.contains("railway.app") && !database_url.contains("sslmode=") {
         tracing::info!("Adding sslmode=require for Railway PostgreSQL");
