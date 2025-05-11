@@ -1,5 +1,6 @@
 use libm::{erf, erfc, exp};
 use std::f64::consts::PI;
+use std::collections::{HashMap, HashSet};
 
 // perf ideas:
 // - use selective EIG a la (https://arxiv.org/abs/2004.05691) (~only eval posterior on pairs with closeish ratings)
@@ -8,129 +9,90 @@ use std::f64::consts::PI;
 //   - doable with autodiff i think, just backprop on KL div & use gradients of posteriors as thresholds
 // - prio queue for updates in message passing by magnitude of update?
 
+// Simple TrueSkill implementation for content-based task comparisons
 pub struct ASAP {
-    ts_solver: TrueSkillSolver,
+    // Maps task content to ratings
+    pub task_ratings: HashMap<String, f64>,
+    // Tracks comparison history
+    comparisons: Vec<(String, String, usize)>, // (taskA, taskB, winner: 0 for A, 1 for B)
+    // Baseline variance
+    pub variance: f64,
 }
 
 impl ASAP {
-    pub fn new(n: usize) -> Self {
+    pub fn new() -> Self {
         ASAP {
-            ts_solver: TrueSkillSolver::new(n),
+            task_ratings: HashMap::new(),
+            comparisons: Vec::new(),
+            variance: 1.0,
         }
     }
 
-    pub fn run_asap(
-        &mut self,
-        m: &[Vec<i32>],
-    ) -> ((usize, usize), Vec<Vec<f64>>, Vec<f64>, Vec<f64>) {
-        let n = m.len();
-        let g = self.unroll_mat(m);
-
-        self.compute_information_gain_mat(n, &g)
+    // Add a comparison with task content strings
+    pub fn add_comparison(&mut self, task_a: &str, task_b: &str, winner: usize) {
+        // Initialize ratings if these are new tasks
+        if !self.task_ratings.contains_key(task_a) {
+            self.task_ratings.insert(task_a.to_string(), 0.0);
+        }
+        
+        if !self.task_ratings.contains_key(task_b) {
+            self.task_ratings.insert(task_b.to_string(), 0.0);
+        }
+        
+        // Store the comparison
+        self.comparisons.push((task_a.to_string(), task_b.to_string(), winner));
+        
+        // Update ratings
+        self.update_ratings();
     }
-
-    fn unroll_mat(&self, m: &[Vec<i32>]) -> Vec<[usize; 2]> {
-        let n = m.len();
-        let mut g = Vec::new();
-        for i in 0..n {
-            for j in 0..n {
-                if m[i][j] > 0 {
-                    // TODO use counts in trueskill solver instead of this loop
-                    for _ in 0..m[i][j] {
-                        g.push([i, j]);
-                    }
+    
+    // Get all ratings
+    pub fn ratings(&self) -> Vec<(String, f64)> {
+        self.task_ratings
+            .iter()
+            .map(|(content, score)| (content.clone(), *score))
+            .collect()
+    }
+    
+    // Update ratings using simplified TrueSkill
+    fn update_ratings(&mut self) {
+        // Reset all ratings to zero
+        for rating in self.task_ratings.values_mut() {
+            *rating = 0.0;
+        }
+        
+        // Apply each comparison to update ratings
+        for (task_a, task_b, winner) in &self.comparisons {
+            // Fix double mutable borrow by copying values first, then updating
+            let task_a_clone = task_a.clone();
+            let task_b_clone = task_b.clone();
+            let winner_value = *winner;
+            
+            // Simple update rule: winner gains 1 point, loser loses 1 point
+            if winner_value == 0 {
+                if let Some(rating) = self.task_ratings.get_mut(&task_a_clone) {
+                    *rating += 1.0;
+                }
+                if let Some(rating) = self.task_ratings.get_mut(&task_b_clone) {
+                    *rating -= 1.0;
+                }
+            } else {
+                if let Some(rating) = self.task_ratings.get_mut(&task_a_clone) {
+                    *rating -= 1.0;
+                }
+                if let Some(rating) = self.task_ratings.get_mut(&task_b_clone) {
+                    *rating += 1.0;
                 }
             }
         }
-        g
-    }
-
-    fn compute_prob_cmps(&self) -> Vec<Vec<f64>> {
-        let (means, vrs) = (self.ts_solver.ms.as_slice(), self.ts_solver.vs.as_slice());
-        let n = means.len();
-
-        let mut prob = vec![vec![0.0; n]; n];
-        for i in 0..n {
-            for j in 0..n {
-                if i == j {
-                    prob[i][j] = 0.0;
-                } else {
-                    let diff_means = means[i] - means[j];
-                    let vars_sum = 1.0 + vrs[i] + vrs[j];
-                    prob[i][j] = ndtr(diff_means / vars_sum.sqrt());
-                }
+        
+        // Normalize ratings to have mean 0
+        if !self.task_ratings.is_empty() {
+            let mean: f64 = self.task_ratings.values().sum::<f64>() / self.task_ratings.len() as f64;
+            for rating in self.task_ratings.values_mut() {
+                *rating -= mean;
             }
         }
-        prob
-    }
-
-    fn compute_information_gain_mat(
-        &mut self,
-        n: usize,
-        g: &[[usize; 2]],
-    ) -> ((usize, usize), Vec<Vec<f64>>, Vec<f64>, Vec<f64>) {
-        let mut kl_divs = vec![vec![0.0; n]; n];
-        self.ts_solver.push_many(g);
-
-        let (ms_curr, vs_curr) = self.ts_solver.solve(true);
-        let prob = self.compute_prob_cmps();
-
-        for i in 1..n {
-            for j in 0..i {
-                let kl1 = {
-                    let (ms, vs) = self.ts_solver.solve_one((i, j));
-                    kl_divergence(&ms, &vs, &ms_curr, &vs_curr)
-                };
-
-                let kl2 = {
-                    let (ms, vs) = self.ts_solver.solve_one((j, i));
-                    kl_divergence(&ms, &vs, &ms_curr, &vs_curr)
-                };
-
-                kl_divs[i][j] = prob[i][j] * kl1 + prob[j][i] * kl2;
-            }
-        }
-
-        let pair_to_compare = self.get_maximum(&kl_divs);
-        (pair_to_compare, prob, ms_curr, vs_curr)
-    }
-
-    fn get_maximum(&self, gain_mat: &[Vec<f64>]) -> (usize, usize) {
-        // use rand::distributions::{Distribution, WeightedIndex};
-        // use rand::thread_rng;
-        // let mut rng = thread_rng();
-        let mut indices = Vec::new();
-        let mut weights = Vec::new();
-        println!("gain_mat: {:?}", gain_mat);
-
-        for (i, row) in gain_mat.iter().enumerate() {
-            for (j, &gain) in row.iter().enumerate() {
-                indices.push((i, j));
-                weights.push(exp(gain * 20.0));
-            }
-        }
-
-        // let dist = WeightedIndex::new(&weights).unwrap();
-        // let chosen_index = dist.sample(&mut rng);
-        let chosen_index = weights
-            .iter()
-            .zip(&indices)
-            .enumerate()
-            .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
-            .unwrap()
-            .0;
-        let chosen_pair = indices[chosen_index];
-
-        let max_gain = gain_mat
-            .iter()
-            .flat_map(|row| row.iter().cloned())
-            .fold(0.0, f64::max);
-
-        println!(
-            "Chosen EIG: {}, Max EIG: {}",
-            gain_mat[chosen_pair.0][chosen_pair.1], max_gain
-        );
-        chosen_pair
     }
 }
 

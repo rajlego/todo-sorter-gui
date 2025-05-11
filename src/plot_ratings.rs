@@ -131,7 +131,12 @@ pub fn plot_ratings(
             let from = parts[0].parse::<usize>().unwrap();
             let to = parts[1].parse::<usize>().unwrap();
             if id_to_index.contains_key(&from) && id_to_index.contains_key(&to) {
-                let p = prob[id_to_index[&from]][id_to_index[&to]];
+                // Default to 0.75 if prob is empty
+                let p = if !prob.is_empty() {
+                    prob[id_to_index[&from]][id_to_index[&to]]
+                } else {
+                    0.75 // Default value if prob is empty
+                };
                 edges.insert((from, to), p);
             }
         }

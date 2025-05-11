@@ -42,6 +42,12 @@ export interface RankedTask extends Task {
   rank: number;
 }
 
+// Interface for task response from updated API
+interface TaskResponse {
+  content: string;
+  completed: boolean;
+}
+
 // API endpoints for comparisons
 export const comparisonsApi = {
   // Get all comparisons
@@ -168,6 +174,14 @@ export const tasksApi = {
     try {
       const response = await apiClient.get('/tasks');
       logApiOperation('getAllTasks - received', response.data);
+      
+      // The updated API now returns an array of task objects with content and completed properties
+      if (Array.isArray(response.data)) {
+        const tasks = response.data.map((task: TaskResponse) => task.content);
+        return tasks;
+      }
+      
+      // Fallback for backward compatibility
       return response.data.tasks || [];
     } catch (error) {
       logApiOperation('getAllTasks', undefined, error);

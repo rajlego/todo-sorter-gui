@@ -6,9 +6,13 @@ mod plot_ci;
 pub mod plot_ratings;
 mod sorter;
 mod web_service;
+mod db;
 
 #[tokio::main]
 async fn main() {
+    // Load environment variables
+    dotenv::dotenv().ok();
+    
     // Check for command line arguments
     let args: Vec<String> = std::env::args().collect();
     

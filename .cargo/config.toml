@@ -1,0 +1,14 @@
+# Runtime configuration for cargo
+# Updated to remove the problematic patch 
+
+[build]
+rustflags = ["-C", "target-cpu=generic"]
+
+[resolver]
+version = "2"
+
+[net]
+git-fetch-with-cli = true
+
+[registries.crates-io]
+protocol = "sparse" 

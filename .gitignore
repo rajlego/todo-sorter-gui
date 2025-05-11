@@ -43,3 +43,9 @@ Cargo.lock
 tasks.md
 # Local Netlify folder
 .netlify
+
+# Database
+.env
+.env.local
+.env.development
+.env.production
