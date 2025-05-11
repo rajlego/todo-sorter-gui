@@ -1,36 +1,52 @@
-# Build frontend
-FROM node:18 AS frontend-builder
-WORKDIR /app/frontend
-COPY web/package*.json ./
-# Install dependencies 
+# Single-stage build for simplicity
+FROM debian:bullseye
+
+# Install dependencies
+RUN apt-get update && \
+    apt-get install -y curl gnupg ca-certificates && \
+    rm -rf /var/lib/apt/lists/*
+
+# Install Node.js
+RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - && \
+    apt-get install -y nodejs && \
+    rm -rf /var/lib/apt/lists/*
+
+# Install Rust
+RUN apt-get update && \
+    apt-get install -y wget build-essential pkg-config libssl-dev && \
+    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y && \
+    rm -rf /var/lib/apt/lists/*
+
+# Add Rust to PATH
+ENV PATH="/root/.cargo/bin:${PATH}"
+
+# Set working directory
+WORKDIR /app
+
+# Copy the entire project
+COPY . .
+
+# Build the frontend
+WORKDIR /app/web
 RUN npm ci
-COPY web/ ./
-# Set environment variables for the build
-ENV ROLLUP_SKIP_NODE_RESOLUTION=true
 RUN npm run build
 
-# Build backend
-FROM rust:slim-bullseye AS backend-builder
+# Go back to the main directory
 WORKDIR /app
-COPY . .
-# Exclude node_modules and frontend build from backend context
-COPY --from=frontend-builder /app/frontend/dist /app/static
-RUN apt-get update && apt-get install -y pkg-config libssl-dev
+
+# Build the Rust backend
 RUN cargo build --release
 
-# Final image
-FROM debian:bullseye-slim
-WORKDIR /app
-# Install dependencies for the runtime
-RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/lists/*
-# Copy the compiled binary
-COPY --from=backend-builder /app/target/release/sorter /app/
-# Copy static frontend files
-COPY --from=frontend-builder /app/frontend/dist /app/static
+# Create a directory for the static files
+RUN mkdir -p /app/static
+RUN cp -r /app/web/dist/* /app/static/
+
 # Set environment variables
 ENV PORT=3000
 ENV STATIC_DIR=static
+
 # Expose the port
 EXPOSE 3000
+
 # Run the application
-CMD ["./sorter", "api"] 
+CMD ["./target/release/sorter", "api"] 
