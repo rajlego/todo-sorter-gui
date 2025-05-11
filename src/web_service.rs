@@ -6,8 +6,7 @@ use axum::{
     Json, Router,
 };
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, HashSet};
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use tower_http::cors::{Any, CorsLayer};
 use tokio::net::TcpListener;
 use tokio::fs;
@@ -15,6 +14,7 @@ use crate::db::{Database, create_pool, create_fallback_pool};
 use crate::auth::{AuthService, AuthUser, LoginRequest, RegisterRequest};
 use crate::realtime::{RealtimeService, ws_handler};
 use uuid::Uuid;
+use std::path::Path;
 
 // Application state with all our services
 pub struct AppState {
@@ -469,7 +469,7 @@ async fn health_check(
     // Try to ping the database
     let db_status = match sqlx::query("SELECT 1").execute(&*state.db.pool).await {
         Ok(_) => "connected",
-        Err(err) => {
+        Err(_) => {
             if std::env::var("SQLX_OFFLINE").unwrap_or_default() == "true" {
                 "offline_mode"
             } else {

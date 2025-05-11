@@ -1,10 +1,8 @@
-use sqlx::postgres::{PgPool, PgPoolOptions};
-use std::env;
+use serde::{Deserialize, Serialize};
+use sqlx::{postgres::PgPoolOptions, FromRow, PgPool, Pool, Postgres};
 use std::sync::Arc;
 use uuid::Uuid;
-use serde::{Deserialize, Serialize};
 use chrono::{DateTime, Utc};
-use sqlx::FromRow;
 
 // Database types that match our schema
 #[derive(Debug, Serialize, Deserialize, FromRow)]
