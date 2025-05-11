@@ -1,7 +1,7 @@
 use axum::{
     extract::State,
-    http::StatusCode,
-    response::IntoResponse,
+    http::{header, StatusCode, Uri},
+    response::{IntoResponse, Response},
     routing::{get},
     Json, Router,
 };
@@ -10,7 +10,9 @@ use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Mutex};
 use tower_http::cors::{Any, CorsLayer};
 use tokio::net::TcpListener;
+use tokio::fs;
 use crate::asap_cpu::ASAP;
+use std::path::PathBuf;
 
 // Type for storing our application state
 pub struct AppState {
@@ -74,6 +76,52 @@ pub struct RankingsResponse {
     rankings: Vec<RankedTask>,
 }
 
+// Simple function to serve static files
+async fn serve_static_file(uri: Uri) -> impl IntoResponse {
+    let mut path = uri.path().trim_start_matches('/').to_string();
+    
+    // If path is empty, serve index.html
+    if path.is_empty() {
+        path = "index.html".to_string();
+    }
+    
+    // Resolve path to the static directory
+    let static_dir = std::env::var("STATIC_DIR").unwrap_or_else(|_| "static".to_string());
+    let file_path = format!("{}/{}", static_dir, path);
+    
+    // Try to read the file
+    match fs::read(&file_path).await {
+        Ok(contents) => {
+            // Set the appropriate content type based on the file extension
+            let content_type = match file_path.split('.').last() {
+                Some("html") => "text/html",
+                Some("css") => "text/css",
+                Some("js") => "application/javascript",
+                Some("json") => "application/json",
+                Some("png") => "image/png",
+                Some("jpg") | Some("jpeg") => "image/jpeg",
+                Some("svg") => "image/svg+xml",
+                Some("ico") => "image/x-icon",
+                _ => "application/octet-stream",
+            };
+            
+            // Create a response with the file contents and content type
+            Response::builder()
+                .status(StatusCode::OK)
+                .header(header::CONTENT_TYPE, content_type)
+                .body(axum::body::Body::from(contents))
+                .unwrap()
+        },
+        Err(_) => {
+            // Return a 404 Not Found response
+            Response::builder()
+                .status(StatusCode::NOT_FOUND)
+                .body(axum::body::Body::from("File not found"))
+                .unwrap()
+        }
+    }
+}
+
 pub async fn run_web_service() {
     // Initialize tracing for better logging
     tracing_subscriber::fmt::init();
@@ -89,14 +137,23 @@ pub async fn run_web_service() {
         .allow_methods(Any)
         .allow_headers(Any);
 
-    // Create our API router
-    let app = Router::new()
+    // Get the static files directory from the environment or use the default
+    let static_dir = std::env::var("STATIC_DIR").unwrap_or_else(|_| "static".to_string());
+    tracing::info!("Serving static files from: {}", static_dir);
+
+    // Create API router
+    let api_routes = Router::new()
         .route("/health", get(health_check))
         .route("/comparisons", get(get_comparisons).post(add_comparison))
         .route("/rankings", get(get_rankings))
         .route("/tasks", get(get_tasks).delete(delete_task))
         .with_state(app_state)
         .layer(cors);
+
+    // Create our application router
+    let app = Router::new()
+        .nest("/api", api_routes) // Move all API routes under /api prefix
+        .fallback(serve_static_file); // Serve static files for all other routes
 
     // Run our service
     let port = std::env::var("PORT").unwrap_or_else(|_| "3000".to_string());
