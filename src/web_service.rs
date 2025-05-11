@@ -133,11 +133,7 @@ pub async fn run_web_service() {
             tracing::warn!("Starting with in-memory mode - data will not be persisted");
             
             // Create a memory-only database as fallback
-            let memory_db = Arc::new(Database { 
-                pool: None, 
-                memory_mode: true 
-            });
-            memory_db
+            Database::memory_only()
         }
     };
     

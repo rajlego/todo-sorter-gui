@@ -33,11 +33,19 @@ pub struct TaskContent {
 
 // Database connection pool
 pub struct Database {
-    pool: Option<PgPool>,
-    memory_mode: bool,
+    pub pool: Option<PgPool>,
+    pub memory_mode: bool,
 }
 
 impl Database {
+    // Create a memory-only database instance
+    pub fn memory_only() -> Arc<Self> {
+        Arc::new(Self {
+            pool: None,
+            memory_mode: true,
+        })
+    }
+
     // Initialize database connection
     pub async fn connect() -> Result<Arc<Self>, SqlxError> {
         // Load from environment variables (.env file in development)
