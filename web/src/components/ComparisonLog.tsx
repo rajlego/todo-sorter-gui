@@ -1,5 +1,5 @@
-import React from 'react';
-import type { Task, Comparison } from '../utils/markdownUtils';
+import { useState } from 'react';
+import type { Comparison } from '../utils/markdownUtils';
 
 interface ComparisonLogProps {
   comparisons: Comparison[];

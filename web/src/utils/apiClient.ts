@@ -2,9 +2,7 @@ import axios from 'axios';
 import type { Task, Comparison } from './markdownUtils';
 
 // Define API base URL
-const API_BASE_URL = process.env.NODE_ENV === 'production' 
-  ? 'https://web-production-fa895.up.railway.app' // Railway URL
-  : 'http://localhost:3000';
+const API_BASE_URL = 'https://web-production-fa895.up.railway.app'; // Always use Railway URL
 
 // API client instance
 const apiClient = axios.create({
@@ -87,7 +85,8 @@ export const comparisonsApi = {
       const taskBId = parseInt(comparison.taskB.id.replace('task-', ''));
       const winnerId = parseInt(comparison.winner.id.replace('task-', ''));
 
-      const response = await apiClient.post('/comparisons', {
+      // Send the comparison to the API
+      await apiClient.post('/comparisons', {
         task_a_id: taskAId,
         task_b_id: taskBId,
         winner_id: winnerId

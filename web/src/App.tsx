@@ -6,7 +6,7 @@ import ComparisonView from './components/ComparisonView';
 import ComparisonLog from './components/ComparisonLog';
 import TaskRankings from './components/TaskRankings';
 import { extractTasks, comparisonsToCSV, generateId } from './utils/markdownUtils';
-import { tasksApi, comparisonsApi, healthCheck } from './utils/apiClient';
+import { comparisonsApi, healthCheck } from './utils/apiClient';
 import type { Comparison, Task } from './utils/markdownUtils';
 
 function App() {
