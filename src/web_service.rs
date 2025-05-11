@@ -11,7 +11,7 @@ use std::sync::{Arc, Mutex};
 use tower_http::cors::{Any, CorsLayer};
 use tokio::net::TcpListener;
 use tokio::fs;
-use crate::db::{Database, create_pool};
+use crate::db::{Database, create_pool, create_fallback_pool};
 use crate::auth::{AuthService, AuthUser, LoginRequest, RegisterRequest};
 use crate::realtime::{RealtimeService, ws_handler};
 use uuid::Uuid;
@@ -97,8 +97,27 @@ pub async fn run_web_service() {
     // Initialize tracing for better logging
     tracing_subscriber::fmt::init();
     
-    // Create database connection
-    let db_pool = create_pool().await;
+    // Create database connection with fallback for Railway deployments
+    let db_pool = match create_pool().await {
+        Ok(pool) => {
+            tracing::info!("Successfully connected to PostgreSQL database");
+            pool
+        },
+        Err(err) => {
+            // Check if we're in SQLX_OFFLINE mode, which allows operation without a DB
+            if std::env::var("SQLX_OFFLINE").unwrap_or_default() == "true" {
+                tracing::warn!("Failed to connect to PostgreSQL: {}. Using fallback with SQLX_OFFLINE=true", err);
+                // Create a fallback minimal connection (may not work for all operations)
+                // The app will run but database operations will likely fail
+                create_fallback_pool().await
+            } else {
+                // If SQLX_OFFLINE is not set, we can't continue without a database
+                tracing::error!("Failed to connect to PostgreSQL: {} and SQLX_OFFLINE is not enabled", err);
+                panic!("Cannot start application without database connection. Set SQLX_OFFLINE=true to allow startup without database.");
+            }
+        }
+    };
+    
     let db = Database::new(db_pool);
     
     // Initialize services
@@ -444,8 +463,22 @@ async fn add_comparison_handler(
 }
 
 // Health check endpoint
-async fn health_check() -> impl IntoResponse {
-    // Create a response with detailed environment information
+async fn health_check(
+    State(state): State<Arc<AppState>>,
+) -> impl IntoResponse {
+    // Try to ping the database
+    let db_status = match sqlx::query("SELECT 1").execute(&*state.db.pool).await {
+        Ok(_) => "connected",
+        Err(err) => {
+            if std::env::var("SQLX_OFFLINE").unwrap_or_default() == "true" {
+                "offline_mode"
+            } else {
+                "error"
+            }
+        }
+    };
+
+    // Get environment information
     let db_url = std::env::var("DATABASE_URL").unwrap_or_else(|_| "Not set".to_string());
     let db_url_masked = if db_url != "Not set" {
         // Mask the credentials in the DB URL for security
@@ -459,13 +492,24 @@ async fn health_check() -> impl IntoResponse {
         "Not set".to_string()
     };
     
+    // Check if we're running on Railway
+    let on_railway = std::env::var("RAILWAY_ENVIRONMENT").is_ok();
+    let railway_environment = std::env::var("RAILWAY_ENVIRONMENT").unwrap_or_default();
+    let railway_service = std::env::var("RAILWAY_SERVICE_NAME").unwrap_or_default();
+    
     let info = serde_json::json!({
-        "status": "ok",
+        "status": if db_status == "connected" { "healthy" } else { "degraded" },
         "version": env!("CARGO_PKG_VERSION"),
         "environment": std::env::var("ENVIRONMENT").unwrap_or_else(|_| "development".to_string()),
         "database": {
+            "status": db_status,
             "url_masked": db_url_masked,
             "offline_mode": std::env::var("SQLX_OFFLINE").unwrap_or_else(|_| "false".to_string()),
+        },
+        "deployment": {
+            "platform": if on_railway { "railway" } else { "unknown" },
+            "railway_environment": railway_environment,
+            "railway_service": railway_service,
         },
         "timestamp": chrono::Utc::now().to_rfc3339(),
     });
