@@ -27,7 +27,7 @@ export const extractTasks = (markdown: string): Task[] => {
     const taskMatch = line.match(/^-\s\[([ x])\]\s(.+)$/);
     if (taskMatch) {
       tasks.push({
-        id: `task-${index}`,
+        id: `task-${index + 1}`, // Using 1-based index for task IDs to match backend
         content: taskMatch[2],
         completed: taskMatch[1] === 'x',
         line: index

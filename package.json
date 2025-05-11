@@ -1,5 +1,6 @@
 {
   "devDependencies": {
+    "react-markdown": "^10.1.0",
     "vite-plugin-static-copy": "^3.0.0"
   }
 }

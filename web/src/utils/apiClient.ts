@@ -85,12 +85,45 @@ export const comparisonsApi = {
       const taskBId = parseInt(comparison.taskB.id.replace('task-', ''));
       const winnerId = parseInt(comparison.winner.id.replace('task-', ''));
 
-      // Send the comparison to the API
-      await apiClient.post('/comparisons', {
+      // Make sure we have valid numeric IDs
+      if (isNaN(taskAId) || isNaN(taskBId) || isNaN(winnerId)) {
+        throw new Error('Invalid task IDs - could not parse numeric IDs');
+      }
+      
+      // Make sure winner is one of the tasks being compared
+      if (winnerId !== taskAId && winnerId !== taskBId) {
+        throw new Error(`Winner ID (${winnerId}) must be either task A (${taskAId}) or task B (${taskBId})`);
+      }
+
+      // Ensure task IDs are positive numbers
+      if (taskAId <= 0 || taskBId <= 0 || winnerId <= 0) {
+        throw new Error('Task IDs must be positive numbers');
+      }
+
+      console.log('Sending comparison to API:', {
         task_a_id: taskAId,
         task_b_id: taskBId,
         winner_id: winnerId
       });
+
+      // Send the comparison to the API
+      try {
+        await apiClient.post('/comparisons', {
+          task_a_id: taskAId,
+          task_b_id: taskBId,
+          winner_id: winnerId
+        });
+      } catch (err: any) {
+        // Log more details about the error response
+        if (err.response) {
+          console.error('API error response:', {
+            status: err.response.status,
+            statusText: err.response.statusText,
+            data: err.response.data
+          });
+        }
+        throw err;
+      }
 
       return {
         id: generateId(),
@@ -110,18 +143,48 @@ export const comparisonsApi = {
 export const rankingsApi = {
   // Get task rankings
   getRankings: async (): Promise<RankedTask[]> => {
+    console.log('rankingsApi.getRankings: Fetching rankings from API');
     try {
       const response = await apiClient.get('/rankings');
-      return response.data.rankings.map((task: any) => ({
-        id: `task-${task.id}`,
-        content: task.content,
-        completed: task.completed,
-        line: task.line,
-        score: task.score,
-        rank: task.rank
-      }));
+      console.log('Rankings API response:', response.data);
+      
+      if (!response.data.rankings || !Array.isArray(response.data.rankings)) {
+        console.error('Invalid rankings format:', response.data);
+        return [];
+      }
+      
+      const rankings = response.data.rankings.map((task: any) => {
+        // Make sure we have a numeric ID from the backend
+        const taskId = typeof task.id === 'number' ? task.id : parseInt(task.id);
+        if (isNaN(taskId)) {
+          console.error('Invalid task ID in rankings:', task.id);
+        }
+        
+        return {
+          id: `task-${taskId}`, // Ensure consistent ID format
+          content: task.content || '',
+          completed: !!task.completed,
+          line: typeof task.line === 'number' ? task.line : 0,
+          score: typeof task.score === 'number' ? task.score : 0,
+          rank: typeof task.rank === 'number' ? task.rank : 0
+        };
+      });
+      
+      console.log(`rankingsApi.getRankings: Processed ${rankings.length} ranked tasks`);
+      console.log('Task IDs after processing:', rankings.map(t => t.id));
+      return rankings;
     } catch (error) {
       console.error('Error fetching rankings:', error);
+      
+      // Log more details if it's an API error
+      if (error.response) {
+        console.error('API error response:', {
+          status: error.response.status,
+          statusText: error.response.statusText,
+          data: error.response.data
+        });
+      }
+      
       throw error;
     }
   },
