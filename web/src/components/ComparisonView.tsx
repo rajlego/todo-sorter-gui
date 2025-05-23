@@ -1,36 +1,55 @@
 import React, { useState, useEffect } from 'react';
-import type { Task } from '../utils/markdownUtils';
+import type { Task, Comparison } from '../utils/markdownUtils';
 
 interface ComparisonViewProps {
   tasks: Task[];
+  comparisons?: Comparison[];
   onComparisonComplete: (taskA: Task, taskB: Task, winner: Task) => void;
 }
 
-const ComparisonView: React.FC<ComparisonViewProps> = ({ tasks, onComparisonComplete }) => {
+const ComparisonView: React.FC<ComparisonViewProps> = ({ tasks, comparisons = [], onComparisonComplete }) => {
   const [currentPair, setCurrentPair] = useState<[Task, Task] | null>(null);
   const [remainingPairs, setRemainingPairs] = useState<[Task, Task][]>([]);
   const [comparisonsCount, setComparisonsCount] = useState(0);
 
-  // Generate all possible pairs of tasks
+  // Generate all possible pairs of tasks and filter out already compared pairs
   useEffect(() => {
     if (tasks.length < 2) return;
     
-    const pairs: [Task, Task][] = [];
+    // Generate all possible pairs
+    const allPairs: [Task, Task][] = [];
     for (let i = 0; i < tasks.length; i++) {
       for (let j = i + 1; j < tasks.length; j++) {
-        pairs.push([tasks[i], tasks[j]]);
+        allPairs.push([tasks[i], tasks[j]]);
       }
     }
     
-    // Shuffle the pairs
-    const shuffledPairs = [...pairs].sort(() => Math.random() - 0.5);
+    // Filter out pairs that have already been compared
+    // We need to check both A->B and B->A combinations since comparison order matters
+    const comparedPairs = new Set<string>();
+    comparisons.forEach(comparison => {
+      // Create normalized pair keys (always put smaller content first for consistency)
+      const contents = [comparison.taskA.content, comparison.taskB.content].sort();
+      comparedPairs.add(contents.join('|||'));
+    });
+    
+    const uncomparedPairs = allPairs.filter(([taskA, taskB]) => {
+      const contents = [taskA.content, taskB.content].sort();
+      const pairKey = contents.join('|||');
+      return !comparedPairs.has(pairKey);
+    });
+    
+    // Shuffle the remaining pairs
+    const shuffledPairs = [...uncomparedPairs].sort(() => Math.random() - 0.5);
     setRemainingPairs(shuffledPairs);
     
     // Set the first pair
     if (shuffledPairs.length > 0) {
       setCurrentPair(shuffledPairs[0]);
+    } else {
+      setCurrentPair(null);
     }
-  }, [tasks]);
+  }, [tasks, comparisons]);
 
   // Select the next pair after a comparison
   const getNextPair = () => {

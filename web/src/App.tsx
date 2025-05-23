@@ -220,27 +220,36 @@ function App() {
   useEffect(() => {
     const checkApiConnection = async () => {
       try {
+        // Check if API is healthy and database is connected
         const isHealthy = await healthCheck();
         setIsApiConnected(isHealthy);
+        
         if (isHealthy) {
-          setApiStatus('Connected to API');
+          setApiStatus('Connected to API with database');
+          console.log('API connected with database, loading data from API...');
           
           try {
-            // If connected, load data from API
+            // Load data from API
             const apiComparisons = await comparisonsApi.getAllComparisons();
+            console.log(`Loaded ${apiComparisons.length} comparisons from API`);
+            
             if (apiComparisons.length > 0) {
               setComparisons(apiComparisons);
               
               // Also fetch rankings
-              fetchRankings();
+              await fetchRankings();
+            } else {
+              console.log('No comparisons found in API, using default data');
             }
           } catch (error) {
             console.error('Failed to load data from API:', error);
             // Fall back to local storage if API fails
+            setApiError('Failed to load data from API, using local storage');
             loadFromLocalStorage();
           }
         } else {
-          setApiError('Not connected to API, using local storage');
+          setApiError('Using local storage (no database connection)');
+          console.log('No database connection, using local storage');
           loadFromLocalStorage();
         }
       } catch (error) {
@@ -659,6 +668,7 @@ function App() {
                 <div className="p-4">
                   <ComparisonView 
                     tasks={tasks} 
+                    comparisons={comparisons}
                     onComparisonComplete={handleComparisonComplete} 
                   />
                 </div>

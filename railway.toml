@@ -19,4 +19,4 @@ port = 3000
 [variables]
 PORT = "3000"
 STATIC_DIR = "/app/static"
-SQLX_OFFLINE = "true"
+SQLX_OFFLINE = "false"

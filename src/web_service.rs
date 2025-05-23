@@ -72,6 +72,20 @@ pub struct RankingsResponse {
     rankings: Vec<RankedTask>,
 }
 
+// Database health check response type
+#[derive(Debug, Serialize)]
+pub struct HealthCheckResponse {
+    status: String,
+    db_connected: bool,
+    memory_mode: bool,
+    diagnostics: HashMap<String, String>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ContentComparisonsResponse {
+    comparisons: Vec<ContentComparison>,
+}
+
 // Simple function to serve static files
 async fn serve_static_file(uri: Uri) -> impl IntoResponse {
     let mut path = uri.path().trim_start_matches('/').to_string();
@@ -153,7 +167,9 @@ pub async fn run_web_service() {
     // Create API router with shared state
     let api_routes = Router::new()
         .route("/health", get(health_check))
+        .route("/db-diagnostic", get(db_diagnostic))
         .route("/comparisons", get(get_comparisons).post(add_comparison))
+        .route("/comparisons/content", get(get_content_comparisons))
         .route("/rankings", get(get_rankings))
         .route("/tasks", get(get_tasks).delete(delete_task))
         .layer(Extension(shared_state))
@@ -177,8 +193,133 @@ pub async fn run_web_service() {
 }
 
 // Health check endpoint
-async fn health_check() -> impl IntoResponse {
-    StatusCode::OK
+async fn health_check(Extension(state): Extension<Arc<AppState>>) -> impl IntoResponse {
+    // Check if we're using memory mode or real database
+    let is_memory_mode = state.db.memory_mode;
+    let mut is_db_connected = state.db.pool.is_some();
+    
+    // Collect diagnostic information
+    let mut diagnostics = HashMap::new();
+    
+    // Add environment info
+    if let Ok(env) = std::env::var("RAILWAY_ENVIRONMENT") {
+        diagnostics.insert("railway_environment".to_string(), env);
+    }
+    
+    if let Ok(project_id) = std::env::var("RAILWAY_PROJECT_ID") {
+        diagnostics.insert("railway_project_id".to_string(), project_id);
+    }
+    
+    // Add database connection info
+    if let Ok(host) = std::env::var("PGHOST") {
+        diagnostics.insert("pghost".to_string(), host);
+    }
+    
+    if let Ok(port) = std::env::var("PGPORT") {
+        diagnostics.insert("pgport".to_string(), port);
+    }
+    
+    if let Ok(db) = std::env::var("PGDATABASE") {
+        diagnostics.insert("pgdatabase".to_string(), db);
+    }
+    
+    // Redacted values
+    if std::env::var("PGUSER").is_ok() {
+        diagnostics.insert("pguser".to_string(), "is_set".to_string());
+    }
+    
+    if std::env::var("PGPASSWORD").is_ok() {
+        diagnostics.insert("pgpassword".to_string(), "is_set".to_string());
+    }
+    
+    if let Ok(url) = std::env::var("DATABASE_URL") {
+        // Only show host portion
+        if let Some(host_part) = url.split('@').nth(1) {
+            diagnostics.insert("database_url_host".to_string(), host_part.to_string());
+        } else {
+            diagnostics.insert("database_url".to_string(), "is_set_but_invalid_format".to_string());
+        }
+    }
+    
+    // Add sqlx offline mode info
+    if let Ok(offline) = std::env::var("SQLX_OFFLINE") {
+        diagnostics.insert("sqlx_offline".to_string(), offline);
+    }
+    
+    // Attempt a real-time check of the database connection
+    if is_db_connected {
+        match &state.db.pool {
+            Some(pool) => {
+                // Test the connection with a simple query
+                match sqlx::query("SELECT 1").execute(pool).await {
+                    Ok(_) => {
+                        tracing::info!("Health check: Database connection verified");
+                        is_db_connected = true;
+                        diagnostics.insert("db_connection_test".to_string(), "success".to_string());
+                    },
+                    Err(err) => {
+                        tracing::error!("Health check: Database connection failed: {}", err);
+                        is_db_connected = false;
+                        diagnostics.insert("db_connection_test".to_string(), format!("error: {}", err));
+                    }
+                }
+            },
+            None => {
+                is_db_connected = false;
+                diagnostics.insert("db_connection_test".to_string(), "memory_mode_no_test_needed".to_string());
+            }
+        }
+    } else {
+        diagnostics.insert("db_connection_test".to_string(), "memory_mode_no_test_needed".to_string());
+    }
+    
+    // Perform DNS resolution test for Railway internal network if we're on Railway
+    if let Ok(host) = std::env::var("PGHOST") {
+        if host.contains(".railway.internal") {
+            // Try to execute a test command to resolve the hostname
+            match tokio::process::Command::new("getent")
+                .args(&["hosts", &host])
+                .output()
+                .await {
+                Ok(output) => {
+                    if output.status.success() {
+                        let stdout = String::from_utf8_lossy(&output.stdout);
+                        diagnostics.insert("dns_resolution".to_string(), format!("success: {}", stdout.trim()));
+                    } else {
+                        let stderr = String::from_utf8_lossy(&output.stderr);
+                        diagnostics.insert("dns_resolution".to_string(), format!("failed: {}", stderr.trim()));
+                    }
+                },
+                Err(err) => {
+                    diagnostics.insert("dns_resolution".to_string(), format!("error: {}", err));
+                }
+            }
+        }
+    }
+    
+    (
+        StatusCode::OK,
+        Json(HealthCheckResponse {
+            status: if is_db_connected { "ok".to_string() } else { "degraded".to_string() },
+            db_connected: is_db_connected,
+            memory_mode: is_memory_mode,
+            diagnostics,
+        })
+    )
+}
+
+// Database diagnostic endpoint
+async fn db_diagnostic(Extension(state): Extension<Arc<AppState>>) -> impl IntoResponse {
+    let diagnostics = match state.db.test_connection().await {
+        Ok(results) => results,
+        Err(e) => {
+            let mut error_map = std::collections::HashMap::new();
+            error_map.insert("error".to_string(), format!("Failed to run diagnostics: {}", e));
+            error_map
+        }
+    };
+    
+    (StatusCode::OK, Json(diagnostics))
 }
 
 // Get all comparisons
@@ -369,6 +510,39 @@ async fn delete_task(
         Err(e) => {
             tracing::error!("Failed to delete task: {}", e);
             StatusCode::INTERNAL_SERVER_ERROR
+        }
+    }
+}
+
+// Get all comparisons in content-based format
+async fn get_content_comparisons(Extension(state): Extension<Arc<AppState>>) -> impl IntoResponse {
+    match state.db.get_comparisons().await {
+        Ok(db_comparisons) => {
+            // Convert database comparisons to content-based format
+            let mut content_comparisons = Vec::new();
+            
+            for comparison in db_comparisons {
+                // Get task contents from the database
+                match crate::db::get_task_contents_from_comparison(&state.db, &comparison).await {
+                    Ok((task_a_content, task_b_content, winner_content)) => {
+                        content_comparisons.push(ContentComparison {
+                            task_a_content,
+                            task_b_content,
+                            winner_content,
+                            timestamp: comparison.timestamp.to_rfc3339(),
+                        });
+                    },
+                    Err(e) => {
+                        tracing::error!("Failed to get task contents: {}", e);
+                    }
+                }
+            }
+            
+            (StatusCode::OK, Json(ContentComparisonsResponse { comparisons: content_comparisons }))
+        },
+        Err(e) => {
+            tracing::error!("Failed to get comparisons: {}", e);
+            (StatusCode::INTERNAL_SERVER_ERROR, Json(ContentComparisonsResponse { comparisons: vec![] }))
         }
     }
 } 

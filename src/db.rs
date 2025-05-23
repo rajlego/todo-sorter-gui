@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use chrono::{DateTime, Utc};
 use uuid::Uuid;
 use std::sync::Arc;
+use std::collections::HashMap;
 
 // Task model - simplified version for better compatibility
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -51,26 +52,159 @@ impl Database {
         // Load from environment variables (.env file in development)
         dotenv::dotenv().ok();
         
-        // Check if DATABASE_URL is set
+        // Try first using explicit PostgreSQL variables which are optimal for Railway
+        let try_connect_with_pg_vars = async {
+            let have_pg_vars = std::env::var("PGHOST").is_ok() && 
+                              std::env::var("PGPORT").is_ok() && 
+                              std::env::var("PGUSER").is_ok() && 
+                              std::env::var("PGPASSWORD").is_ok() && 
+                              std::env::var("PGDATABASE").is_ok();
+                
+            if have_pg_vars {
+                let pghost = std::env::var("PGHOST").unwrap();
+                let pgport = std::env::var("PGPORT").unwrap();
+                let pguser = std::env::var("PGUSER").unwrap();
+                let pgpassword = std::env::var("PGPASSWORD").unwrap();
+                let pgdatabase = std::env::var("PGDATABASE").unwrap();
+                
+                let is_railway_internal = pghost.contains(".railway.internal");
+                if is_railway_internal {
+                    tracing::info!("Using Railway internal network with explicit PG* variables");
+                    tracing::info!("PGHOST={}, PGPORT={}, PGDATABASE={}", pghost, pgport, pgdatabase);
+                    
+                    // Construct an optimized connection string for Railway internal network
+                    let connection_string = format!(
+                        "postgres://{}:{}@{}:{}/{}?application_name=todo-sorter&connect_timeout=10",
+                        pguser, pgpassword, pghost, pgport, pgdatabase
+                    );
+                    
+                    // Attempt to connect using explicit PG* variables
+                    match Self::connect_with_retry(&connection_string, 5).await {
+                        Ok(pool) => {
+                            tracing::info!("Successfully connected with Railway internal network PG* variables");
+                            return Some(Arc::new(Self { pool: Some(pool), memory_mode: false }));
+                        },
+                        Err(e) => {
+                            tracing::warn!("Failed to connect with explicit PG* variables: {}", e);
+                            tracing::warn!("Will fallback to DATABASE_URL if available");
+                            // Fallback to DATABASE_URL
+                        }
+                    }
+                }
+            }
+            None
+        };
+        
+        // Try connecting with explicit PG variables first
+        if let Some(db) = try_connect_with_pg_vars.await {
+            return Ok(db);
+        }
+        
+        // Fallback to DATABASE_URL
         match std::env::var("DATABASE_URL") {
             Ok(database_url) => {
-                // Connect to the database
-                let pool = PgPoolOptions::new()
-                    .max_connections(5)
-                    .connect(&database_url).await?;
-                    
-                // Create tables if they don't exist
-                Self::initialize_tables(&pool).await?;
+                // Only log the host part, not credentials
+                let host_part = database_url.split('@').nth(1).unwrap_or("(hidden)");
+                tracing::info!("Attempting to connect to database at: {}", host_part);
                 
-                tracing::info!("Connected to PostgreSQL database");
-                Ok(Arc::new(Self { pool: Some(pool), memory_mode: false }))
+                if let Some(db_url_parts) = database_url.split('@').nth(1) {
+                    if db_url_parts.contains("railway.internal") {
+                        tracing::info!("Detected Railway internal network address - using optimized connection settings");
+                    }
+                }
+                
+                // Log information about the current environment
+                if let Ok(env) = std::env::var("RAILWAY_ENVIRONMENT") {
+                    tracing::info!("Running in Railway environment: {}", env);
+                }
+                
+                // Connect to the database with retries
+                match Self::connect_with_retry(&database_url, 5).await {
+                    Ok(pool) => {
+                        tracing::info!("Successfully connected to PostgreSQL database");
+                        return Ok(Arc::new(Self { pool: Some(pool), memory_mode: false }));
+                    },
+                    Err(err) => {
+                        tracing::error!("All database connection attempts failed! Last error: {}", err);
+                        tracing::warn!("Running in memory-only mode. Data will not be persisted!");
+                        
+                        // Log additional helpful info for connection failures
+                        if let Ok(pghost) = std::env::var("PGHOST") {
+                            tracing::info!("PGHOST environment variable is set to: {}", pghost);
+                        }
+                        
+                        if let Ok(port) = std::env::var("PGPORT") {
+                            tracing::info!("PGPORT environment variable is set to: {}", port);
+                        }
+                        
+                        Ok(Arc::new(Self { pool: None, memory_mode: true }))
+                    }
+                }
             },
-            Err(_) => {
+            Err(err) => {
                 // If DATABASE_URL is not set, operate in memory-only mode
-                tracing::warn!("DATABASE_URL not set! Running in memory-only mode. Data will not be persisted!");
+                tracing::warn!("DATABASE_URL not set or invalid ({}). Running in memory-only mode. Data will not be persisted!", err);
                 Ok(Arc::new(Self { pool: None, memory_mode: true }))
             }
         }
+    }
+    
+    // Helper method for connection with retry logic
+    async fn connect_with_retry(database_url: &str, max_retries: u32) -> Result<PgPool, SqlxError> {
+        let mut last_error = None;
+        
+        for attempt in 1..=max_retries {
+            tracing::info!("Database connection attempt {} of {}", attempt, max_retries);
+            
+            // Connect to the database with increased timeout
+            let pool_result = PgPoolOptions::new()
+                .max_connections(5)
+                .acquire_timeout(std::time::Duration::from_secs(60)) // Increased timeout
+                .connect(database_url)
+                .await;
+            
+            match pool_result {
+                Ok(pool) => {
+                    // Test the connection with a simple query
+                    match sqlx::query("SELECT 1").execute(&pool).await {
+                        Ok(_) => {
+                            // Create tables if they don't exist
+                            match Self::initialize_tables(&pool).await {
+                                Ok(_) => {
+                                    tracing::info!("Successfully connected to PostgreSQL database and created tables");
+                                    return Ok(pool);
+                                },
+                                Err(err) => {
+                                    tracing::error!("Failed to initialize database tables: {}", err);
+                                    last_error = Some(err);
+                                    // Continue to next attempt
+                                }
+                            }
+                        },
+                        Err(err) => {
+                            tracing::error!("Database connection test failed: {}", err);
+                            last_error = Some(err);
+                            // Continue to next attempt
+                        }
+                    }
+                },
+                Err(err) => {
+                    tracing::error!("Database connection attempt {} failed: {}", attempt, err);
+                    last_error = Some(err);
+                    // Continue to next attempt
+                }
+            }
+            
+            // Wait before retrying with exponential backoff
+            if attempt < max_retries {
+                let delay = std::time::Duration::from_secs(2 * attempt as u64);
+                tracing::info!("Waiting {:?} before next connection attempt", delay);
+                tokio::time::sleep(delay).await;
+            }
+        }
+        
+        // All attempts failed
+        Err(last_error.unwrap_or_else(|| SqlxError::PoolClosed))
     }
     
     // Create database tables if they don't exist
@@ -331,6 +465,92 @@ impl Database {
             .await?;
             
         Ok(row.map(|row: PgRow| row.get("content")))
+    }
+
+    // Helper method to diagnose connection timeouts
+    pub async fn test_connection(&self) -> Result<HashMap<String, String>, SqlxError> {
+        let mut results = HashMap::new();
+        
+        if self.memory_mode {
+            results.insert("mode".to_string(), "memory_only".to_string());
+            results.insert("status".to_string(), "no_database_connection".to_string());
+            return Ok(results);
+        }
+        
+        match &self.pool {
+            Some(pool) => {
+                // Get the current time for timing measurements
+                let start = std::time::Instant::now();
+                
+                // Try a simple query first
+                match sqlx::query("SELECT 1").execute(pool).await {
+                    Ok(_) => {
+                        let elapsed = start.elapsed();
+                        results.insert("query_test".to_string(), "success".to_string());
+                        results.insert("query_time_ms".to_string(), elapsed.as_millis().to_string());
+                    },
+                    Err(err) => {
+                        results.insert("query_test".to_string(), "error".to_string());
+                        results.insert("query_error".to_string(), err.to_string());
+                        
+                        // Check if it's a timeout error
+                        if err.to_string().contains("timeout") {
+                            results.insert("error_type".to_string(), "timeout".to_string());
+                            
+                            // Check DNS resolution if it's a timeout
+                            if let Ok(pghost) = std::env::var("PGHOST") {
+                                if pghost.contains(".railway.internal") {
+                                    // Check DNS resolution with getent
+                                    match tokio::process::Command::new("getent")
+                                        .args(&["hosts", &pghost])
+                                        .output()
+                                        .await {
+                                        Ok(output) => {
+                                            if output.status.success() {
+                                                let stdout = String::from_utf8_lossy(&output.stdout);
+                                                results.insert("dns_resolution".to_string(), format!("success: {}", stdout.trim()));
+                                            } else {
+                                                let stderr = String::from_utf8_lossy(&output.stderr);
+                                                results.insert("dns_resolution".to_string(), format!("error: {}", stderr.trim()));
+                                            }
+                                        },
+                                        Err(e) => {
+                                            results.insert("dns_resolution".to_string(), format!("command_error: {}", e));
+                                        }
+                                    }
+                                }
+                            }
+                            
+                            // Get networking environment
+                            if let Ok(env) = std::env::var("RAILWAY_ENVIRONMENT") {
+                                results.insert("railway_environment".to_string(), env);
+                            }
+                            
+                            if let Ok(project) = std::env::var("RAILWAY_PROJECT_ID") {
+                                results.insert("railway_project_id".to_string(), project);
+                            }
+                        }
+                    }
+                }
+                
+                // Try a connection stats query
+                match sqlx::query("SELECT count(*) FROM pg_stat_activity").fetch_one(pool).await {
+                    Ok(row) => {
+                        let connections: i64 = row.get(0);
+                        results.insert("active_connections".to_string(), connections.to_string());
+                    },
+                    Err(err) => {
+                        results.insert("connection_stats".to_string(), format!("error: {}", err));
+                    }
+                }
+                
+                Ok(results)
+            },
+            None => {
+                results.insert("status".to_string(), "no_pool".to_string());
+                Ok(results)
+            }
+        }
     }
 }
 

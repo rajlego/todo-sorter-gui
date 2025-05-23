@@ -53,12 +53,13 @@ export const comparisonsApi = {
   // Get all comparisons
   getAllComparisons: async (): Promise<Comparison[]> => {
     try {
-      const response = await apiClient.get('/comparisons');
+      const response = await apiClient.get('/comparisons/content');
+      
       const comparisons = response.data.comparisons.map((comp: any) => ({
-        id: comp.id || generateId(),
-        taskA: { id: `task-${comp.task_a_id}`, content: '', completed: false, line: 0 },
-        taskB: { id: `task-${comp.task_b_id}`, content: '', completed: false, line: 0 },
-        winner: { id: `task-${comp.winner_id}`, content: '', completed: false, line: 0 },
+        id: generateId(),
+        taskA: { id: generateId(), content: comp.task_a_content, completed: false, line: 0 },
+        taskB: { id: generateId(), content: comp.task_b_content, completed: false, line: 0 },
+        winner: { id: generateId(), content: comp.winner_content, completed: false, line: 0 },
         timestamp: new Date(comp.timestamp)
       }));
       logApiOperation('getAllComparisons', { count: comparisons.length });
@@ -149,13 +150,34 @@ export const rankingsApi = {
   },
 };
 
+// Health check response type
+interface HealthCheckResponse {
+  status: string;
+  db_connected: boolean;
+  memory_mode: boolean;
+}
+
 // Health check endpoint
 export const healthCheck = async (): Promise<boolean> => {
   try {
     const response = await apiClient.get('/health');
+    logApiOperation('healthCheck - received', response.data);
+    
+    // Check if it's the new response format with db_connected
+    if (response.data && typeof response.data === 'object') {
+      const healthData = response.data as HealthCheckResponse;
+      
+      // If we get a specific memory_mode flag, check if we're using a real database connection
+      if ('db_connected' in healthData) {
+        return healthData.db_connected === true && healthData.memory_mode === false;
+      }
+    }
+    
+    // Fallback for old response format
     return response.status === 200;
   } catch (error) {
     console.error('API health check failed:', error);
+    logApiOperation('healthCheck - failed', undefined, error);
     return false;
   }
 };
