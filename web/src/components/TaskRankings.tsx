@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import type { Task, Comparison } from '../utils/markdownUtils';
 import { rankingsApi } from '../utils/apiClient';
-import type { RankedTask } from '../utils/apiClient';
+import type { RankedTask, ASAPStats } from '../utils/apiClient';
 
 interface TaskRankingsProps {
   tasks: Task[];
@@ -11,6 +11,7 @@ interface TaskRankingsProps {
 
 const TaskRankings: React.FC<TaskRankingsProps> = ({ tasks, comparisons, listId }) => {
   const [rankedTasks, setRankedTasks] = useState<RankedTask[]>([]);
+  const [asapStats, setAsapStats] = useState<ASAPStats | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -20,6 +21,7 @@ const TaskRankings: React.FC<TaskRankingsProps> = ({ tasks, comparisons, listId 
       // If no tasks, reset rankings and return
       if (tasks.length === 0) {
         setRankedTasks([]);
+        setAsapStats(null);
         return;
       }
 
@@ -29,13 +31,13 @@ const TaskRankings: React.FC<TaskRankingsProps> = ({ tasks, comparisons, listId 
       try {
         // If we have comparisons, fetch from API
         if (comparisons.length > 0) {
-          const rankings = await rankingsApi.getRankings(listId);
+          const response = await rankingsApi.getRankings(listId);
           
           // Get all current task contents
           const taskContents = tasks.map(task => task.content);
           
           // Filter API rankings to only include tasks that exist in the editor
-          const apiRankedTasks = rankings.filter(rankedTask => 
+          const apiRankedTasks = response.rankings.filter(rankedTask => 
             taskContents.includes(rankedTask.content)
           );
           
@@ -46,13 +48,16 @@ const TaskRankings: React.FC<TaskRankingsProps> = ({ tasks, comparisons, listId 
           );
           
           // Create default rankings for unranked tasks (score 0)
-          const defaultRankedTasks = unrankedTasks.map(task => ({
+          const defaultRankedTasks: RankedTask[] = unrankedTasks.map(task => ({
             id: task.id,
             content: task.content,
             completed: task.completed,
             line: task.line,
             score: 0,
-            rank: 0 // Will be reassigned below
+            rank: 0, // Will be reassigned below
+            variance: 0.5, // Default variance
+            confidence_interval: [0, 0], // Default confidence interval
+            comparisons_count: 0 // No comparisons yet
           }));
           
           // Combine API rankings with default rankings
@@ -67,32 +72,41 @@ const TaskRankings: React.FC<TaskRankingsProps> = ({ tasks, comparisons, listId 
             }));
           
           setRankedTasks(rerankedTasks);
+          setAsapStats(response.stats);
         } else {
           // If no comparisons yet, show tasks with default ranks and scores
-          const defaultRankedTasks = tasks.map((task, index) => ({
+          const defaultRankedTasks: RankedTask[] = tasks.map((task, index) => ({
             id: task.id,
             content: task.content,
             completed: task.completed,
             line: task.line,
             score: 0,
-            rank: index + 1
+            rank: index + 1,
+            variance: 0.5,
+            confidence_interval: [0, 0],
+            comparisons_count: 0
           }));
           setRankedTasks(defaultRankedTasks);
+          setAsapStats(null);
         }
       } catch (err) {
         console.error('Failed to fetch rankings:', err);
         setError('Failed to fetch rankings. Using local sorting as fallback.');
         
         // Fallback to our local calculation if the API call fails
-        const localRankedTasks = tasks.map((task, index) => ({
+        const localRankedTasks: RankedTask[] = tasks.map((task, index) => ({
           id: task.id,
           content: task.content,
           completed: task.completed,
           line: task.line,
           score: 0,
-          rank: index + 1
+          rank: index + 1,
+          variance: 0.5,
+          confidence_interval: [0, 0],
+          comparisons_count: 0
         }));
         setRankedTasks(localRankedTasks);
+        setAsapStats(null);
       } finally {
         setLoading(false);
       }

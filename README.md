@@ -84,7 +84,7 @@ const extractTasks = (markdown: string): Task[] => {
   // "[ ] Checkbox task"
   // "- [x] Markdown checkbox task"
 }
-```
+   ```
 
 ### 3. State Management Architecture
 

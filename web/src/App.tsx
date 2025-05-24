@@ -8,7 +8,7 @@ import IdManager from './components/IdManager';
 import { extractTasks, comparisonsToCSV, generateId, sortMarkdownByRankings, deduplicateComparisons } from './utils/markdownUtils';
 import { comparisonsApi, healthCheck, rankingsApi, tasksApi } from './utils/apiClient';
 import type { Comparison, Task } from './utils/markdownUtils';
-import type { RankedTask } from './utils/apiClient';
+import type { RankedTask, ASAPStats } from './utils/apiClient';
 import './App.css';
 
 function App() {
@@ -41,10 +41,11 @@ Schedule dentist appointment
   });
   const [activeTab, setActiveTab] = useState<'editor-compare' | 'log'>('editor-compare');
   const [comparisons, setComparisons] = useState<Comparison[]>([]);
-  const [apiStatus, setApiStatus] = useState<string | null>(null);
+  const [apiStatus, setApiStatus] = useState<string>('Checking connection...');
   const [apiError, setApiError] = useState<string | null>(null);
   const [isApiConnected, setIsApiConnected] = useState<boolean>(false);
   const [rankedTasks, setRankedTasks] = useState<RankedTask[]>([]);
+  const [asapStats, setAsapStats] = useState<ASAPStats | null>(null);
   const [isLoadingRankings, setIsLoadingRankings] = useState<boolean>(false);
   const [isUpdatingMarkdown, setIsUpdatingMarkdown] = useState<boolean>(false);
   const [previousTasks, setPreviousTasks] = useState<string[]>([]);
@@ -278,20 +279,24 @@ Schedule dentist appointment
     
     try {
       console.log('Calling rankingsApi.getRankings()');
-      const rankings = await rankingsApi.getRankings(listId);
-      console.log('Rankings received from API:', rankings);
+      const response = await rankingsApi.getRankings(listId);
+      console.log('Rankings response received from API:', response);
       
       // Filter rankings to only include tasks that exist in the editor
       const currentTaskContents = tasks.map(task => task.content);
-      const filteredRankings = rankings.filter(rankedTask => 
+      const filteredRankings = response.rankings.filter(rankedTask => 
         currentTaskContents.includes(rankedTask.content)
       );
       
       setRankedTasks(filteredRankings);
+      setAsapStats(response.stats);
+      console.log('Updated ASAP stats:', response.stats);
+      
       return filteredRankings;
     } catch (error) {
       console.error('Failed to fetch rankings from API:', error);
       setApiError('Failed to fetch rankings from API');
+      setAsapStats(null);
       return [];
     } finally {
       setIsLoadingRankings(false);
@@ -831,7 +836,8 @@ Schedule dentist appointment
                 <ComparisonView 
                   tasks={tasks} 
                   comparisons={comparisons}
-                  onComparisonComplete={handleComparisonComplete} 
+                  onComparisonComplete={handleComparisonComplete}
+                  asapStats={asapStats}
                 />
               </div>
             </div>

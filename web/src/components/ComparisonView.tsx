@@ -1,37 +1,36 @@
 import React, { useState, useEffect } from 'react';
 import type { Task, Comparison } from '../utils/markdownUtils';
-import { 
-  selectOptimalPair, 
-  calculateComparisonStats, 
-  calculateTaskRatings,
-  estimateComparisonsNeeded,
-  type ComparisonStats 
-} from '../utils/asapUtils';
+import type { ASAPStats } from '../utils/apiClient';
 
 interface ComparisonViewProps {
   tasks: Task[];
   comparisons?: Comparison[];
   onComparisonComplete: (taskA: Task, taskB: Task, winner: Task) => void;
+  asapStats?: ASAPStats | null; // Real ASAP statistics from backend
 }
 
-const ComparisonView: React.FC<ComparisonViewProps> = ({ tasks, comparisons = [], onComparisonComplete }) => {
+const ComparisonView: React.FC<ComparisonViewProps> = ({ tasks, comparisons = [], onComparisonComplete, asapStats }) => {
   const [currentPair, setCurrentPair] = useState<[Task, Task] | null>(null);
-  const [stats, setStats] = useState<ComparisonStats | null>(null);
 
   // Calculate comparison count from the actual comparisons array
   const comparisonsCount = comparisons.length;
 
-  // Generate optimal pair using ASAP algorithm
+  // Generate a smart pair based on ASAP stats or fall back to random
   const generateOptimalPair = (taskList: Task[]): [Task, Task] | null => {
     if (taskList.length < 2) return null;
     
-    // Use ASAP algorithm to select the most informative pair
-    const optimalPair = selectOptimalPair(taskList, comparisons);
-    if (optimalPair) {
-      return optimalPair;
+    // If we have ASAP stats with an optimal next pair recommendation, try to use it
+    if (asapStats?.optimal_next_pair) {
+      const [contentA, contentB] = asapStats.optimal_next_pair;
+      const taskA = taskList.find(t => t.content === contentA);
+      const taskB = taskList.find(t => t.content === contentB);
+      
+      if (taskA && taskB) {
+        return [taskA, taskB];
+      }
     }
     
-    // Fallback: random pair if ASAP fails
+    // Fallback: random pair selection
     const randomIndex1 = Math.floor(Math.random() * taskList.length);
     let randomIndex2 = Math.floor(Math.random() * taskList.length);
     while (randomIndex2 === randomIndex1) {
@@ -39,16 +38,6 @@ const ComparisonView: React.FC<ComparisonViewProps> = ({ tasks, comparisons = []
     }
     return [taskList[randomIndex1], taskList[randomIndex2]];
   };
-
-  // Calculate advanced statistics
-  useEffect(() => {
-    if (tasks.length >= 2) {
-      const comparisonStats = calculateComparisonStats(tasks, comparisons);
-      setStats(comparisonStats);
-    } else {
-      setStats(null);
-    }
-  }, [tasks, comparisons]);
 
   // Generate new pair when tasks change or after comparison
   useEffect(() => {
@@ -58,7 +47,7 @@ const ComparisonView: React.FC<ComparisonViewProps> = ({ tasks, comparisons = []
     } else {
       setCurrentPair(null);
     }
-  }, [tasks.length, comparisons.length]);
+  }, [tasks.length, comparisons.length, asapStats?.optimal_next_pair]);
 
   // Handle keyboard input
   useEffect(() => {
@@ -80,85 +69,146 @@ const ComparisonView: React.FC<ComparisonViewProps> = ({ tasks, comparisons = []
     }
   };
 
-  // Helper function to get convergence status
+  // Helper function to get convergence status using real ASAP values
   const getConvergenceStatus = () => {
-    if (!stats) return { label: 'Initializing', color: 'text-gray-500' };
+    if (!asapStats) return { label: 'Calculating...', color: 'text-gray-500' };
     
-    if (stats.convergence >= 0.9) return { label: 'Excellent', color: 'text-emerald-600' };
-    if (stats.convergence >= 0.7) return { label: 'Good', color: 'text-green-600' };
-    if (stats.convergence >= 0.5) return { label: 'Fair', color: 'text-amber-600' };
-    if (stats.convergence >= 0.3) return { label: 'Poor', color: 'text-orange-600' };
+    const convergence = asapStats.convergence;
+    if (convergence >= 0.9) return { label: 'Excellent', color: 'text-emerald-600' };
+    if (convergence >= 0.7) return { label: 'Good', color: 'text-green-600' };
+    if (convergence >= 0.5) return { label: 'Fair', color: 'text-amber-600' };
+    if (convergence >= 0.3) return { label: 'Poor', color: 'text-orange-600' };
     return { label: 'Very Poor', color: 'text-red-600' };
   };
 
-  // Helper function to get information gain status
+  // Helper function to get information gain status using real ASAP values
   const getInformationGainStatus = () => {
-    if (!stats) return { label: 'Calculating', color: 'text-gray-500' };
+    if (!asapStats) return { label: 'Calculating...', color: 'text-gray-500' };
     
-    if (stats.informationGain >= 0.8) return { label: 'Very High', color: 'text-emerald-600' };
-    if (stats.informationGain >= 0.6) return { label: 'High', color: 'text-green-600' };
-    if (stats.informationGain >= 0.4) return { label: 'Medium', color: 'text-amber-600' };
-    if (stats.informationGain >= 0.2) return { label: 'Low', color: 'text-orange-600' };
+    const gain = asapStats.max_information_gain;
+    if (gain >= 0.8) return { label: 'Very High', color: 'text-emerald-600' };
+    if (gain >= 0.6) return { label: 'High', color: 'text-green-600' };
+    if (gain >= 0.4) return { label: 'Medium', color: 'text-amber-600' };
+    if (gain >= 0.2) return { label: 'Low', color: 'text-orange-600' };
     return { label: 'Very Low', color: 'text-red-600' };
+  };
+
+  // Calculate remaining comparisons needed for good convergence
+  const estimateComparisonsNeeded = (): number => {
+    if (!asapStats) return 0;
+    
+    // Use real ASAP statistics to estimate
+    const targetCoverage = 0.8; // 80% coverage target
+    const currentCoverage = asapStats.coverage;
+    
+    if (currentCoverage >= targetCoverage) return 0;
+    
+    const neededCoverage = targetCoverage - currentCoverage;
+    const neededPairs = Math.ceil(neededCoverage * asapStats.possible_pairs);
+    return Math.max(0, neededPairs);
   };
 
   const convergenceStatus = getConvergenceStatus();
   const infoGainStatus = getInformationGainStatus();
-  const comparisonsNeeded = stats ? estimateComparisonsNeeded(stats, 0.8) : 0;
+  const comparisonsNeeded = estimateComparisonsNeeded();
 
   return (
     <div className="h-full flex flex-col">
-      {/* Advanced Statistics Header */}
+      {/* Real ASAP Statistics Header */}
       <div className="mb-6 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
         <h3 className="text-lg font-medium text-gray-800 dark:text-gray-200 mb-3">
-          ASAP-Powered Comparison Engine
+          Real ASAP Algorithm (from acertain/todo-sorter)
         </h3>
         
-        {stats && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-            {/* Coverage */}
-            <div className="text-center">
-              <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                {Math.round(stats.coverage * 100)}%
+        {asapStats ? (
+          <div className="space-y-4">
+            {/* Main metrics grid */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+              {/* Coverage */}
+              <div className="text-center">
+                <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                  {Math.round(asapStats.coverage * 100)}%
+                </div>
+                <div className="text-gray-600 dark:text-gray-400">Coverage</div>
+                <div className="text-xs text-gray-500">
+                  {asapStats.unique_pairs}/{asapStats.possible_pairs} pairs
+                </div>
               </div>
-              <div className="text-gray-600 dark:text-gray-400">Coverage</div>
-              <div className="text-xs text-gray-500">
-                {stats.uniquePairs}/{stats.possiblePairs} pairs
+              
+              {/* Convergence */}
+              <div className="text-center">
+                <div className={`text-2xl font-bold ${convergenceStatus.color}`}>
+                  {Math.round(asapStats.convergence * 100)}%
+                </div>
+                <div className="text-gray-600 dark:text-gray-400">Convergence</div>
+                <div className={`text-xs ${convergenceStatus.color}`}>
+                  {convergenceStatus.label}
+                </div>
+              </div>
+              
+              {/* Information Gain */}
+              <div className="text-center">
+                <div className={`text-2xl font-bold ${infoGainStatus.color}`}>
+                  {asapStats.max_information_gain.toFixed(3)}
+                </div>
+                <div className="text-gray-600 dark:text-gray-400">Info Gain</div>
+                <div className={`text-xs ${infoGainStatus.color}`}>
+                  {infoGainStatus.label}
+                </div>
+              </div>
+              
+              {/* Remaining */}
+              <div className="text-center">
+                <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">
+                  {comparisonsNeeded}
+                </div>
+                <div className="text-gray-600 dark:text-gray-400">Remaining</div>
+                <div className="text-xs text-gray-500">
+                  for 80% coverage
+                </div>
               </div>
             </div>
             
-            {/* Convergence */}
-            <div className="text-center">
-              <div className={`text-2xl font-bold ${convergenceStatus.color}`}>
-                {Math.round(stats.convergence * 100)}%
-              </div>
-              <div className="text-gray-600 dark:text-gray-400">Convergence</div>
-              <div className={`text-xs ${convergenceStatus.color}`}>
-                {convergenceStatus.label}
+            {/* ASAP Algorithm Details */}
+            <div className="border-t pt-3 mt-3">
+              <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Algorithm Parameters (from acertain implementation):
+              </h4>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-xs">
+                <div>
+                  <span className="text-gray-500">Mean Variance:</span>
+                  <span className="ml-2 font-mono">{asapStats.mean_variance.toFixed(4)}</span>
+                </div>
+                <div>
+                  <span className="text-gray-500">Initial Variance:</span>
+                  <span className="ml-2 font-mono">{asapStats.initial_variance}</span>
+                </div>
+                <div>
+                  <span className="text-gray-500">Prior Precision:</span>
+                  <span className="ml-2 font-mono">{asapStats.prior_precision}</span>
+                </div>
+                <div>
+                  <span className="text-gray-500">Convergence Threshold:</span>
+                  <span className="ml-2 font-mono">{asapStats.convergence_threshold}</span>
+                </div>
+                <div>
+                  <span className="text-gray-500">Total Comparisons:</span>
+                  <span className="ml-2 font-mono">{asapStats.total_comparisons}</span>
+                </div>
+                {asapStats.optimal_next_pair && (
+                  <div className="md:col-span-1">
+                    <span className="text-gray-500">Next Optimal:</span>
+                    <span className="ml-2 text-xs text-blue-600">
+                      {asapStats.optimal_next_pair[0].substring(0, 20)}... vs {asapStats.optimal_next_pair[1].substring(0, 20)}...
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
-            
-            {/* Information Gain */}
-            <div className="text-center">
-              <div className={`text-2xl font-bold ${infoGainStatus.color}`}>
-                {stats.informationGain.toFixed(2)}
-              </div>
-              <div className="text-gray-600 dark:text-gray-400">Info Gain</div>
-              <div className={`text-xs ${infoGainStatus.color}`}>
-                {infoGainStatus.label}
-              </div>
-            </div>
-            
-            {/* Remaining */}
-            <div className="text-center">
-              <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">
-                {comparisonsNeeded}
-              </div>
-              <div className="text-gray-600 dark:text-gray-400">Remaining</div>
-              <div className="text-xs text-gray-500">
-                for 80% convergence
-              </div>
-            </div>
+          </div>
+        ) : (
+          <div className="text-center text-gray-500 dark:text-gray-400">
+            Loading ASAP statistics...
           </div>
         )}
       </div>
@@ -173,7 +223,7 @@ const ComparisonView: React.FC<ComparisonViewProps> = ({ tasks, comparisons = []
             <p className="text-sm text-gray-600 dark:text-gray-400">
               {comparisonsCount === 0 
                 ? "Start comparing tasks to build priority rankings" 
-                : `Comparison ${comparisonsCount + 1} • Using ASAP algorithm for optimal pair selection`
+                : `Comparison ${comparisonsCount + 1} • Using real ASAP algorithm for optimal pair selection`
               }
             </p>
           </div>

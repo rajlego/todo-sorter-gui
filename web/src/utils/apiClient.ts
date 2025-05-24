@@ -40,6 +40,31 @@ const logApiOperation = (operation: string, data?: any, error?: any) => {
 export interface RankedTask extends Task {
   score: number;
   rank: number;
+  variance: number;
+  confidence_interval: [number, number]; // 90% confidence interval
+  comparisons_count: number;
+}
+
+// Interface for ASAP statistics from the backend
+export interface ASAPStats {
+  total_comparisons: number;
+  unique_pairs: number;
+  possible_pairs: number;
+  coverage: number; // Percentage of possible pairs compared (0-1)
+  convergence: number; // Convergence measure (0-1)
+  mean_variance: number;
+  max_information_gain: number;
+  optimal_next_pair: [string, string] | null;
+  // ASAP algorithm constants
+  initial_variance: number;
+  prior_precision: number;
+  convergence_threshold: number;
+}
+
+// Interface for rankings response with statistics
+export interface RankingsResponse {
+  rankings: RankedTask[];
+  stats: ASAPStats;
 }
 
 // Interface for task response from updated API
@@ -118,8 +143,8 @@ export const comparisonsApi = {
 
 // API endpoint for rankings
 export const rankingsApi = {
-  // Get task rankings
-  getRankings: async (listId: string): Promise<RankedTask[]> => {
+  // Get task rankings with ASAP statistics
+  getRankings: async (listId: string): Promise<RankingsResponse> => {
     logApiOperation('getRankings - starting', { listId });
     try {
       const response = await apiClient.post('/rankings', { list_id: listId });
@@ -127,7 +152,20 @@ export const rankingsApi = {
       
       if (!response.data.rankings || !Array.isArray(response.data.rankings)) {
         logApiOperation('getRankings - invalid format', response.data);
-        return [];
+        const emptyStats: ASAPStats = {
+          total_comparisons: 0,
+          unique_pairs: 0,
+          possible_pairs: 0,
+          coverage: 0,
+          convergence: 0,
+          mean_variance: 0,
+          max_information_gain: 0,
+          optimal_next_pair: null,
+          initial_variance: 0.5,
+          prior_precision: 0.02,
+          convergence_threshold: 0.001,
+        };
+        return { rankings: [], stats: emptyStats };
       }
       
       // Process content-based rankings
@@ -138,12 +176,30 @@ export const rankingsApi = {
           completed: false, // We don't track this in the API anymore
           line: 0, // We don't track this in the API anymore
           score: typeof task.score === 'number' ? task.score : 0,
-          rank: typeof task.rank === 'number' ? task.rank : 0
+          rank: typeof task.rank === 'number' ? task.rank : 0,
+          variance: typeof task.variance === 'number' ? task.variance : 0,
+          confidence_interval: Array.isArray(task.confidence_interval) ? task.confidence_interval : [0, 0],
+          comparisons_count: typeof task.comparisons_count === 'number' ? task.comparisons_count : 0
         };
       });
       
+      // Process ASAP statistics
+      const stats: ASAPStats = {
+        total_comparisons: response.data.stats?.total_comparisons || 0,
+        unique_pairs: response.data.stats?.unique_pairs || 0,
+        possible_pairs: response.data.stats?.possible_pairs || 0,
+        coverage: response.data.stats?.coverage || 0,
+        convergence: response.data.stats?.convergence || 0,
+        mean_variance: response.data.stats?.mean_variance || 0,
+        max_information_gain: response.data.stats?.max_information_gain || 0,
+        optimal_next_pair: response.data.stats?.optimal_next_pair || null,
+        initial_variance: response.data.stats?.initial_variance || 0.5,
+        prior_precision: response.data.stats?.prior_precision || 0.02,
+        convergence_threshold: response.data.stats?.convergence_threshold || 0.001,
+      };
+      
       logApiOperation('getRankings - processed', { count: rankings.length, listId });
-      return rankings;
+      return { rankings, stats };
     } catch (error) {
       logApiOperation('getRankings', undefined, error);
       throw error;
