@@ -1,7 +1,7 @@
 use axum::{
     http::{header, StatusCode, Uri},
     response::{IntoResponse, Response},
-    routing::{get, delete},
+    routing::{get, post, delete},
     Json, Router, Extension,
 };
 use serde::{Deserialize, Serialize};
@@ -54,12 +54,20 @@ pub struct AddComparisonRequest {
     task_a_content: String,
     task_b_content: String,
     winner_content: String,
+    list_id: String,
 }
 
 // Request for deleting a task
 #[derive(Debug, Deserialize)]
 pub struct DeleteTaskRequest {
     content: String,
+    list_id: String,
+}
+
+// Request for getting tasks with list_id
+#[derive(Debug, Deserialize)]
+pub struct ListRequest {
+    list_id: String,
 }
 
 #[derive(Debug, Serialize)]
@@ -168,10 +176,12 @@ pub async fn run_web_service() {
     let api_routes = Router::new()
         .route("/health", get(health_check))
         .route("/db-diagnostic", get(db_diagnostic))
-        .route("/comparisons", get(get_comparisons).post(add_comparison))
-        .route("/comparisons/content", get(get_content_comparisons))
-        .route("/rankings", get(get_rankings))
-        .route("/tasks", get(get_tasks).delete(delete_task))
+        .route("/comparisons/get", post(get_comparisons))
+        .route("/comparisons/add", post(add_comparison))
+        .route("/comparisons/content", post(get_content_comparisons))
+        .route("/rankings", post(get_rankings))
+        .route("/tasks", post(get_tasks))
+        .route("/tasks/delete", post(delete_task))
         .layer(Extension(shared_state))
         .layer(cors);
 
@@ -322,16 +332,19 @@ async fn db_diagnostic(Extension(state): Extension<Arc<AppState>>) -> impl IntoR
     (StatusCode::OK, Json(diagnostics))
 }
 
-// Get all comparisons
-async fn get_comparisons(Extension(state): Extension<Arc<AppState>>) -> impl IntoResponse {
-    match state.db.get_comparisons().await {
+// Get comparisons
+async fn get_comparisons(
+    Extension(state): Extension<Arc<AppState>>,
+    Json(payload): Json<ListRequest>,
+) -> impl IntoResponse {
+    match state.db.get_comparisons(&payload.list_id).await {
         Ok(db_comparisons) => {
-            // Convert database comparisons to content-based format
+            // Convert database comparisons to content-based for enhanced user experience
             let mut content_comparisons = Vec::new();
             
-            for comparison in db_comparisons {
+            for comparison in &db_comparisons {
                 // Get task contents from the database
-                match crate::db::get_task_contents_from_comparison(&state.db, &comparison).await {
+                match crate::db::get_task_contents_from_comparison(&state.db, comparison).await {
                     Ok((task_a_content, task_b_content, winner_content)) => {
                         content_comparisons.push(ContentComparison {
                             task_a_content,
@@ -382,7 +395,7 @@ async fn add_comparison(
         return (StatusCode::BAD_REQUEST, Json(ComparisonsResponse { comparisons: vec![] }));
     }
     
-    match state.db.add_comparison(&payload.task_a_content, &payload.task_b_content, &payload.winner_content).await {
+    match state.db.add_comparison(&payload.task_a_content, &payload.task_b_content, &payload.winner_content, &payload.list_id).await {
         Ok(_) => (StatusCode::CREATED, Json(ComparisonsResponse { comparisons: vec![] })),
         Err(e) => {
             tracing::error!("Failed to add comparison: {}", e);
@@ -392,9 +405,12 @@ async fn add_comparison(
 }
 
 // Get rankings
-async fn get_rankings(Extension(state): Extension<Arc<AppState>>) -> impl IntoResponse {
+async fn get_rankings(
+    Extension(state): Extension<Arc<AppState>>,
+    Json(payload): Json<ListRequest>,
+) -> impl IntoResponse {
     // First, get all comparisons from the database
-    match state.db.get_comparisons().await {
+    match state.db.get_comparisons(&payload.list_id).await {
         Ok(comparisons) => {
             if comparisons.is_empty() {
                 return (StatusCode::OK, Json(RankingsResponse { rankings: vec![] }));
@@ -479,8 +495,11 @@ async fn get_rankings(Extension(state): Extension<Arc<AppState>>) -> impl IntoRe
 }
 
 // Get all tasks
-async fn get_tasks(Extension(state): Extension<Arc<AppState>>) -> impl IntoResponse {
-    match state.db.get_tasks().await {
+async fn get_tasks(
+    Extension(state): Extension<Arc<AppState>>,
+    Json(payload): Json<ListRequest>,
+) -> impl IntoResponse {
+    match state.db.get_tasks(&payload.list_id).await {
         Ok(tasks) => {
             // Extract just the content strings for backward compatibility
             let task_contents: Vec<TaskContent> = tasks.into_iter()
@@ -504,7 +523,7 @@ async fn delete_task(
     Extension(state): Extension<Arc<AppState>>,
     Json(payload): Json<DeleteTaskRequest>,
 ) -> impl IntoResponse {
-    match state.db.delete_task(&payload.content).await {
+    match state.db.delete_task(&payload.content, &payload.list_id).await {
         Ok(true) => StatusCode::OK,
         Ok(false) => StatusCode::NOT_FOUND,
         Err(e) => {
@@ -515,8 +534,11 @@ async fn delete_task(
 }
 
 // Get all comparisons in content-based format
-async fn get_content_comparisons(Extension(state): Extension<Arc<AppState>>) -> impl IntoResponse {
-    match state.db.get_comparisons().await {
+async fn get_content_comparisons(
+    Extension(state): Extension<Arc<AppState>>,
+    Json(payload): Json<ListRequest>,
+) -> impl IntoResponse {
+    match state.db.get_comparisons(&payload.list_id).await {
         Ok(db_comparisons) => {
             // Convert database comparisons to content-based format
             let mut content_comparisons = Vec::new();

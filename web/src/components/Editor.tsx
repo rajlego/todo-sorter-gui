@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import CodeMirror from '@uiw/react-codemirror';
 import { markdown } from '@codemirror/lang-markdown';
 
@@ -23,26 +23,37 @@ const Editor: React.FC<EditorProps> = ({ value, onChange }) => {
     return () => darkModeQuery.removeEventListener('change', handleChange);
   }, []);
 
+  // Memoize extensions to prevent unnecessary re-creation
+  const extensions = useMemo(() => [markdown()], []);
+
+  // Memoize basic setup configuration
+  const basicSetup = useMemo(() => ({
+    lineNumbers: true,
+    highlightActiveLine: true,
+    highlightSelectionMatches: true,
+    autocompletion: true,
+    foldGutter: true,
+    indentOnInput: true,
+  }), []);
+
+  // Memoize the onChange handler to prevent unnecessary re-renders
+  const handleChange = useCallback((val: string) => {
+    onChange(val);
+  }, [onChange]);
+
   return (
     <div className="h-full w-full font-mono rounded-b-lg overflow-hidden">
       <CodeMirror
         value={value}
         height="100%"
-        extensions={[markdown()]}
-        onChange={onChange}
+        extensions={extensions}
+        onChange={handleChange}
         theme={isDarkMode ? 'dark' : 'light'}
         className="h-full"
-        basicSetup={{
-          lineNumbers: true,
-          highlightActiveLine: true,
-          highlightSelectionMatches: true,
-          autocompletion: true,
-          foldGutter: true,
-          indentOnInput: true,
-        }}
+        basicSetup={basicSetup}
       />
     </div>
   );
 };
 
-export default Editor; 
+export default React.memo(Editor); 

@@ -1,9 +1,10 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import TaskSidebar from './components/TaskSidebar';
 import ComparisonView from './components/ComparisonView';
 import ComparisonLog from './components/ComparisonLog';
 import TaskRankings from './components/TaskRankings';
 import Editor from './components/Editor';
+import IdManager from './components/IdManager';
 import { extractTasks, comparisonsToCSV, generateId } from './utils/markdownUtils';
 import { comparisonsApi, healthCheck, rankingsApi, tasksApi } from './utils/apiClient';
 import type { Comparison, Task } from './utils/markdownUtils';
@@ -11,9 +12,14 @@ import type { RankedTask } from './utils/apiClient';
 import './App.css';
 
 function App() {
-  const [markdownContent, setMarkdownContent] = useState<string>(
-    '# Welcome to the Comparison Sorter App!\n\n## Tasks\n- [ ] First task to do\n- [ ] Second task to do\n- [ ] Another important task\n- [ ] Low priority task\n\nEdit this markdown to add more tasks.'
-  );
+  const [markdownContent, setMarkdownContent] = useState<string>(() => {
+    // Try to load from localStorage first, fallback to default
+    const savedMarkdown = localStorage.getItem('markdown-content');
+    if (savedMarkdown) {
+      return savedMarkdown;
+    }
+    return '# Welcome to the Todo Sorter App!\n\n# Each line below is a task - comments start with #\nFirst task to do\nSecond task to do\nAnother important task\nLow priority task\n\n# You can mark completed tasks with ✓ or [x]\n✓ Example completed task\n\n# Add more tasks by simply typing them on new lines';
+  });
   const [activeTab, setActiveTab] = useState<'editor-compare' | 'log'>('editor-compare');
   const [comparisons, setComparisons] = useState<Comparison[]>([]);
   const [apiStatus, setApiStatus] = useState<string | null>(null);
@@ -21,23 +27,59 @@ function App() {
   const [isApiConnected, setIsApiConnected] = useState<boolean>(false);
   const [rankedTasks, setRankedTasks] = useState<RankedTask[]>([]);
   const [isLoadingRankings, setIsLoadingRankings] = useState<boolean>(false);
+  const [isUpdatingMarkdown, setIsUpdatingMarkdown] = useState<boolean>(false);
   const [previousTasks, setPreviousTasks] = useState<string[]>([]);
+  
+  // List ID state for authentication-free access control
+  const [listId, setListId] = useState<string>(() => {
+    // Try to load from localStorage first
+    const saved = localStorage.getItem('todo-list-id');
+    if (saved && saved.length >= 8) {
+      return saved;
+    }
+    // Generate a new random ID if none exists
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    let result = '';
+    for (let i = 0; i < 24; i++) {
+      result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return result;
+  });
 
   // To track when we last fetched rankings to avoid too many API calls
   const lastRankingFetchRef = useRef<number>(0);
   // To track pending markdown changes
   const markdownDebounceTimeout = useRef<number | null>(null);
+  // To track if we're in the middle of a ranking update to prevent editor jumps
+  const rankingUpdateInProgress = useRef<boolean>(false);
 
-  // Extract tasks from markdown - this is now the single source of truth
-  const tasks = extractTasks(markdownContent);
+  // Save the listId to localStorage whenever it changes (including initial generation)
+  useEffect(() => {
+    if (listId && listId.length >= 8) {
+      localStorage.setItem('todo-list-id', listId);
+      console.log('Saved list ID to localStorage:', listId);
+    }
+  }, [listId]);
 
-  // Direct content matching update method
-  const updateMarkdownWithRankingsByContent = async (): Promise<boolean> => {
+  // Memoized tasks extraction to avoid unnecessary recalculation
+  const tasks = useMemo(() => {
+    if (rankingUpdateInProgress.current) {
+      // If we're updating rankings, don't recalculate tasks to avoid jumping
+      return [];
+    }
+    return extractTasks(markdownContent);
+  }, [markdownContent]);
+
+  // Optimized content matching update method with better state management
+  const updateMarkdownWithRankingsByContent = useCallback(async (): Promise<boolean> => {
     console.log('Content matching markdown update starting...');
-    if (!isApiConnected) {
-      console.error('API not connected');
+    if (!isApiConnected || rankingUpdateInProgress.current) {
+      console.error('API not connected or update in progress');
       return false;
     }
+    
+    setIsUpdatingMarkdown(true);
+    rankingUpdateInProgress.current = true;
     
     try {
       // Get latest rankings from API if we don't have recent ones
@@ -52,7 +94,8 @@ function App() {
       }
       
       // Get current task contents from the editor
-      const currentTaskContents = tasks.map(task => task.content);
+      const currentTasks = extractTasks(markdownContent);
+      const currentTaskContents = currentTasks.map(task => task.content);
       
       // Create a map of task content to ranking data
       // Only include rankings for tasks that exist in the editor
@@ -72,16 +115,43 @@ function App() {
       // Update the markdown directly by matching content
       const lines = markdownContent.split('\n');
       const updatedLines = lines.map(line => {
-        // Check if line is a task - optimized regex that doesn't capture optional ranking part
-        const taskMatch = line.match(/^-\s\[([ x])\]\s(.+?)(?:\s+\|\s+Rank:.+)?$/);
-        if (!taskMatch) return line;
+        const trimmedLine = line.trim();
         
-        const content = taskMatch[2];
+        // Skip empty lines and comments
+        if (!trimmedLine || trimmedLine.startsWith('#')) {
+          return line;
+        }
+        
+        let content = trimmedLine;
+        let completed = false;
+        let prefix = '';
+        
+        // Check for completion markers and preserve them
+        if (trimmedLine.startsWith('✓ ')) {
+          completed = true;
+          content = trimmedLine.substring(2).trim();
+          prefix = '✓ ';
+        } else if (trimmedLine.startsWith('[x] ')) {
+          completed = true;
+          content = trimmedLine.substring(4).trim();
+          prefix = '[x] ';
+        } else if (trimmedLine.startsWith('[ ] ')) {
+          completed = false;
+          content = trimmedLine.substring(4).trim();
+          prefix = '[ ] ';
+        }
+        
+        // Remove existing ranking info if present
+        const rankingMatch = content.match(/^(.+?)\s+\|\s+Rank:\s+\d+\s+\|\s+Score:\s+[-\d.]+$/);
+        if (rankingMatch) {
+          content = rankingMatch[1];
+        }
+        
         const rankData = contentRankMap.get(content);
         
         if (rankData) {
-          // Base task without ranking
-          const baseTask = `- [${taskMatch[1]}] ${content}`;
+          // Base task with completion prefix
+          const baseTask = `${prefix}${content}`;
           // New task with ranking
           const newLine = `${baseTask} | Rank: ${rankData.rank} | Score: ${rankData.score.toFixed(2)}`;
           
@@ -95,7 +165,7 @@ function App() {
           // If it has ranking information, we should remove it
           if (line.includes(' | Rank:')) {
             hasChanges = true;
-            return `- [${taskMatch[1]}] ${content}`;
+            return `${prefix}${content}`;
           }
         }
         
@@ -108,54 +178,73 @@ function App() {
       }
       
       const updatedMarkdown = updatedLines.join('\n');
-      setMarkdownContent(updatedMarkdown);
-      localStorage.setItem('markdown-content', updatedMarkdown);
-      setApiStatus('Markdown updated with latest rankings');
+      
+      // Use setTimeout to batch the state update and avoid editor jumps
+      setTimeout(() => {
+        setMarkdownContent(updatedMarkdown);
+        localStorage.setItem('markdown-content', updatedMarkdown);
+        setApiStatus('Markdown updated with latest rankings');
+      }, 50);
+      
       return true;
     } catch (error) {
       console.error('Error in direct update:', error);
       setApiError('Direct update failed: ' + (error.message || 'Unknown error'));
       return false;
+    } finally {
+      setIsUpdatingMarkdown(false);
+      // Allow task extraction again after a short delay
+      setTimeout(() => {
+        rankingUpdateInProgress.current = false;
+      }, 100);
     }
-  };
+  }, [isApiConnected, rankedTasks, markdownContent]);
 
   // Update markdown with rankings calls the content method
-  const updateMarkdownWithRankings = async (): Promise<boolean> => {
+  const updateMarkdownWithRankings = useCallback(async (): Promise<boolean> => {
     console.log('Starting updateMarkdownWithRankings');
     return updateMarkdownWithRankingsByContent();
-  };
+  }, [updateMarkdownWithRankingsByContent]);
 
-  // Handle changes in the editor with debouncing
+  // Optimized editor change handler with better debouncing
   const handleEditorChange = useCallback((value: string) => {
+    // Skip if we're in the middle of a ranking update to prevent conflicts
+    if (rankingUpdateInProgress.current) {
+      return;
+    }
+    
+    // Update the content immediately for responsiveness
+    setMarkdownContent(value);
+    
     // Clear any pending timeout
     if (markdownDebounceTimeout.current) {
       clearTimeout(markdownDebounceTimeout.current);
     }
 
-    // Set a new timeout to update the markdown after 500ms of inactivity
+    // Set a new timeout to save to localStorage after 1000ms of inactivity (increased for smoother typing)
     markdownDebounceTimeout.current = setTimeout(() => {
-      setMarkdownContent(value);
       localStorage.setItem('markdown-content', value);
       markdownDebounceTimeout.current = null;
-    }, 500) as unknown as number;
+    }, 1000) as unknown as number;
   }, []);
 
-  // Fetch rankings from API with throttling
-  const fetchRankings = async () => {
+  // Optimized fetch rankings with better throttling
+  const fetchRankings = useCallback(async () => {
     console.log('fetchRankings called with:', {
       isApiConnected,
       tasksLength: tasks.length,
-      comparisonsLength: comparisons.length
+      comparisonsLength: comparisons.length,
+      listId
     });
     
-    if (!isApiConnected || tasks.length === 0 || comparisons.length === 0) {
+    if (!isApiConnected || tasks.length === 0 || comparisons.length === 0 || !listId) {
       console.log('Skipping fetchRankings due to missing prerequisites');
       return [];
     }
     
-    // Throttle API calls to once every 2 seconds
+    // Throttle API calls to once every 3 seconds (increased for smoother experience)
     const now = Date.now();
-    if (now - lastRankingFetchRef.current < 2000) {
+    if (now - lastRankingFetchRef.current < 3000) {
       console.log('Throttling ranking fetch, last fetch was', (now - lastRankingFetchRef.current) / 1000, 'seconds ago');
       return rankedTasks; // Return existing rankings instead of fetching
     }
@@ -165,7 +254,7 @@ function App() {
     
     try {
       console.log('Calling rankingsApi.getRankings()');
-      const rankings = await rankingsApi.getRankings();
+      const rankings = await rankingsApi.getRankings(listId);
       console.log('Rankings received from API:', rankings);
       
       // Filter rankings to only include tasks that exist in the editor
@@ -175,20 +264,20 @@ function App() {
       );
       
       setRankedTasks(filteredRankings);
-      setIsLoadingRankings(false);
       return filteredRankings;
     } catch (error) {
       console.error('Failed to fetch rankings from API:', error);
       setApiError('Failed to fetch rankings from API');
-      setIsLoadingRankings(false);
       return [];
+    } finally {
+      setIsLoadingRankings(false);
     }
-  };
+  }, [isApiConnected, tasks.length, comparisons.length, listId, rankedTasks]);
 
-  // Add an effect to detect new tasks and update rankings accordingly
+  // Optimized task sync effect with better debouncing
   useEffect(() => {
     // Skip if API is not connected or if we don't have any tasks
-    if (!isApiConnected || tasks.length === 0) {
+    if (!isApiConnected || tasks.length === 0 || rankingUpdateInProgress.current) {
       return;
     }
 
@@ -205,16 +294,16 @@ function App() {
       !currentTaskContents.includes(rankedTask.content)
     );
     
-    // If we have inconsistencies, update the rankings
+    // If we have inconsistencies, update the rankings with longer delay
     if (missingFromRankings || extraInRankings) {
       console.log('Tasks and rankings are out of sync, refreshing rankings...');
-      // Add a small delay to avoid excessive updates
+      // Add a longer delay to avoid excessive updates
       const timer = setTimeout(() => {
         fetchRankings();
-      }, 500);
+      }, 1500);
       return () => clearTimeout(timer);
     }
-  }, [tasks.length, rankedTasks.length, isApiConnected]);
+  }, [tasks.length, rankedTasks.length, isApiConnected, fetchRankings]);
 
   // Check API connection on mount
   useEffect(() => {
@@ -230,14 +319,16 @@ function App() {
           
           try {
             // Load data from API
-            const apiComparisons = await comparisonsApi.getAllComparisons();
+            const apiComparisons = await comparisonsApi.getAllComparisons(listId);
             console.log(`Loaded ${apiComparisons.length} comparisons from API`);
             
             if (apiComparisons.length > 0) {
               setComparisons(apiComparisons);
               
-              // Also fetch rankings
-              await fetchRankings();
+              // Also fetch rankings with delay to prevent initial jerkiness
+              setTimeout(() => {
+                fetchRankings();
+              }, 500);
             } else {
               console.log('No comparisons found in API, using default data');
             }
@@ -261,12 +352,7 @@ function App() {
     };
 
     const loadFromLocalStorage = () => {
-      // Load data from localStorage
-      const savedMarkdown = localStorage.getItem('markdown-content');
-      if (savedMarkdown) {
-        setMarkdownContent(savedMarkdown);
-      }
-      
+      // Load comparisons from localStorage (markdown is loaded in initial state)
       const savedComparisons = localStorage.getItem('comparisons');
       if (savedComparisons) {
         try {
@@ -284,25 +370,25 @@ function App() {
     };
 
     checkApiConnection();
-  }, []);
+  }, [listId, fetchRankings]);
 
-  // Update rankings when comparisons change
+  // Optimized comparison updates with better delay
   useEffect(() => {
     // Use a reference to track if this effect already ran for this set of comparisons
     const comparisonCount = comparisons.length;
     
     if (isApiConnected && comparisonCount > 0) {
-      // Add a small delay to avoid rapid re-renders
+      // Add a longer delay to avoid rapid re-renders
       const timer = setTimeout(() => {
         fetchRankings();
-      }, 300);
+      }, 1000);
       
       return () => clearTimeout(timer);
     }
-  }, [comparisons.length, isApiConnected]); // Only depend on the length, not the whole array
+  }, [comparisons.length, isApiConnected, fetchRankings]);
 
-  // Handle comparison completion
-  const handleComparisonComplete = async (taskA: Task, taskB: Task, winner: Task) => {
+  // Optimized comparison completion handler
+  const handleComparisonComplete = useCallback(async (taskA: Task, taskB: Task, winner: Task) => {
     // Make sure we have complete Task objects with line property
     const completeTaskA = tasks.find(t => t.id === taskA.id) || taskA;
     const completeTaskB = tasks.find(t => t.id === taskB.id) || taskB;
@@ -327,7 +413,7 @@ function App() {
           taskA: completeTaskA,
           taskB: completeTaskB,
           winner: completeWinner
-        });
+        }, listId);
         console.log('Comparison saved to API successfully');
         apiSaveSuccess = true;
       } catch (error) {
@@ -343,10 +429,10 @@ function App() {
       return updatedComparisons;
     });
     
-    // After saving comparison, update the rankings
+    // After saving comparison, update the rankings with longer delay
     // Only if API save was successful
     if (apiSaveSuccess) {
-      // Use a timeout to allow the API to update its rankings
+      // Use a longer timeout to allow the API to update its rankings and reduce jerkiness
       console.log('Scheduling automatic markdown update...');
       setTimeout(async () => {
         try {
@@ -360,12 +446,12 @@ function App() {
         } catch (updateError) {
           console.error('Failed to auto-update markdown with rankings:', updateError);
         }
-      }, 1000); // Use a slightly longer timeout to ensure the backend has processed the comparison
+      }, 2000); // Increased timeout for smoother experience
     }
-  };
+  }, [tasks, isApiConnected, listId, updateMarkdownWithRankingsByContent]);
 
   // Handle export to CSV
-  const handleExportCSV = () => {
+  const handleExportCSV = useCallback(() => {
     const csvContent = comparisonsToCSV(comparisons);
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -375,12 +461,24 @@ function App() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-  };
+  }, [comparisons]);
 
-  // Detect and handle task deletions
+  // Handle export to Markdown
+  const handleExportMarkdown = useCallback(() => {
+    const blob = new Blob([markdownContent], { type: 'text/markdown;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `tasks-${new Date().toISOString().split('T')[0]}.md`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }, [markdownContent]);
+
+  // Optimized task deletion handler with better debouncing
   useEffect(() => {
     // Skip if API is not connected or if we don't have previous tasks data
-    if (!isApiConnected) {
+    if (!isApiConnected || rankingUpdateInProgress.current) {
       // Update the previous tasks array for next comparison
       const currentTaskContents = tasks.map(task => task.content);
       setPreviousTasks(currentTaskContents);
@@ -399,30 +497,38 @@ function App() {
         prevContent => !currentTaskContents.includes(prevContent)
       );
       
-      // If we detected deleted tasks, remove them from the backend
+      // If we detected deleted tasks, remove them from the backend with debouncing
       if (deletedTasks.length > 0) {
         console.log(`Detected ${deletedTasks.length} deleted tasks:`, deletedTasks);
         
-        // Delete each removed task from the API
-        const deletePromises = deletedTasks.map(async (taskContent) => {
-          try {
-            const result = await tasksApi.deleteTask(taskContent);
-            console.log(`Task "${taskContent}" deletion result:`, result);
-            return result;
-          } catch (error) {
-            console.error(`Failed to delete task "${taskContent}":`, error);
-            return false;
-          }
-        });
+        // Use timeout to debounce rapid task deletions
+        const timer = setTimeout(() => {
+          // Delete each removed task from the API
+          const deletePromises = deletedTasks.map(async (taskContent) => {
+            try {
+              const result = await tasksApi.deleteTask(taskContent, listId);
+              console.log(`Task "${taskContent}" deletion result:`, result);
+              return result;
+            } catch (error) {
+              console.error(`Failed to delete task "${taskContent}":`, error);
+              return false;
+            }
+          });
+          
+          // When all deletions are processed, update the rankings
+          Promise.all(deletePromises).then(results => {
+            if (results.some(result => result)) {
+              // At least one task was successfully deleted
+              console.log("Successfully deleted tasks, refreshing rankings");
+              // Add delay to allow backend to process
+              setTimeout(() => {
+                fetchRankings();
+              }, 1000);
+            }
+          });
+        }, 500); // Debounce task deletions
         
-        // When all deletions are processed, update the rankings
-        Promise.all(deletePromises).then(results => {
-          if (results.some(result => result)) {
-            // At least one task was successfully deleted
-            console.log("Successfully deleted tasks, refreshing rankings");
-            fetchRankings();
-          }
-        });
+        return () => clearTimeout(timer);
       }
     }
     
@@ -434,12 +540,12 @@ function App() {
     
     // Only depend on task length changes, not the entire tasks array
     // to avoid unnecessary re-renders and API calls
-  }, [tasks.length, isApiConnected]);
+  }, [tasks.length, isApiConnected, previousTasks, listId, fetchRankings]);
 
-  // Detect and handle task additions
+  // Optimized task addition handler with better debouncing
   useEffect(() => {
-    // Skip if API is not connected
-    if (!isApiConnected) {
+    // Skip if API is not connected or updating rankings
+    if (!isApiConnected || rankingUpdateInProgress.current) {
       return;
     }
 
@@ -460,33 +566,77 @@ function App() {
     if (newTasks.length > 0) {
       console.log(`Detected ${newTasks.length} new tasks:`, newTasks);
       
-      // Register each new task with the API
-      const registerPromises = newTasks.map(async (taskContent) => {
-        try {
-          const result = await tasksApi.registerTask(taskContent);
-          console.log(`Task "${taskContent}" registration result:`, result);
-          return result;
-        } catch (error) {
-          console.error(`Failed to register task "${taskContent}":`, error);
-          return false;
-        }
-      });
+      // Use timeout to debounce rapid task additions
+      const timer = setTimeout(() => {
+        // Register each new task with the API
+        const registerPromises = newTasks.map(async (taskContent) => {
+          try {
+            const result = await tasksApi.registerTask(taskContent, listId);
+            console.log(`Task "${taskContent}" registration result:`, result);
+            return result;
+          } catch (error) {
+            console.error(`Failed to register task "${taskContent}":`, error);
+            return false;
+          }
+        });
+        
+        // When all registrations are processed, update the rankings
+        Promise.all(registerPromises).then(results => {
+          if (results.some(result => result)) {
+            // At least one task was successfully registered
+            console.log("Successfully registered new tasks, refreshing rankings");
+            // Add a longer delay to allow the backend to process the registrations
+            setTimeout(() => {
+              fetchRankings();
+            }, 1500);
+          }
+        });
+      }, 500); // Debounce task additions
       
-      // When all registrations are processed, update the rankings
-      Promise.all(registerPromises).then(results => {
-        if (results.some(result => result)) {
-          // At least one task was successfully registered
-          console.log("Successfully registered new tasks, refreshing rankings");
-          // Add a delay to allow the backend to process the registrations
-          setTimeout(() => {
-            fetchRankings();
-          }, 1000);
-        }
-      });
+      return () => clearTimeout(timer);
     }
     
     // Now continue with the rest of the function
-  }, [tasks.length, isApiConnected]);
+  }, [tasks.length, isApiConnected, previousTasks, listId, fetchRankings]);
+
+  // Optimized list ID change handler
+  const handleListIdChange = useCallback((newListId: string) => {
+    setListId(newListId);
+    // Clear existing data when switching lists
+    setComparisons([]);
+    setRankedTasks([]);
+    setApiStatus('Switched to new list ID');
+    // Reload data for the new list
+    if (isApiConnected) {
+      setTimeout(() => {
+        loadComparisonsFromAPI();
+      }, 100);
+    }
+  }, [isApiConnected]);
+
+  // Optimized comparisons loading
+  const loadComparisonsFromAPI = useCallback(async () => {
+    if (!isApiConnected || !listId) {
+      return;
+    }
+    
+    try {
+      console.log('Loading comparisons from API for list:', listId);
+      const apiComparisons = await comparisonsApi.getAllComparisons(listId);
+      setComparisons(apiComparisons);
+      console.log('Loaded', apiComparisons.length, 'comparisons from API');
+      
+      // Also fetch rankings if we have comparisons with delay
+      if (apiComparisons.length > 0) {
+        setTimeout(() => {
+          fetchRankings();
+        }, 500);
+      }
+    } catch (error) {
+      console.error('Failed to load comparisons from API:', error);
+      setApiError('Failed to load comparisons from API');
+    }
+  }, [isApiConnected, listId, fetchRankings]);
 
   return (
     <div className="flex flex-col min-h-screen w-full bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-gray-900 dark:to-gray-800 text-gray-900 dark:text-gray-100">
@@ -567,6 +717,11 @@ function App() {
         </div>
       )}
       
+      {/* ID Manager */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+        <IdManager listId={listId} onListIdChange={handleListIdChange} />
+      </div>
+      
       {/* Main Content */}
       <div className="flex-grow w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Modern Navigation Tabs */}
@@ -616,7 +771,18 @@ function App() {
               <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
                 <div className="flex justify-between items-center px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700">
                   <h2 className="text-base font-medium text-gray-700 dark:text-gray-300">Markdown Editor</h2>
-                  <div className="text-xs text-gray-500 dark:text-gray-400 italic">Supports GitHub-flavored markdown</div>
+                  <div className="flex items-center space-x-3">
+                    <div className="text-xs text-gray-500 dark:text-gray-400 italic">Each line is a task, # for comments</div>
+                    <button
+                      onClick={handleExportMarkdown}
+                      className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md shadow-sm bg-green-600 text-white hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 dark:focus:ring-offset-gray-800 transition-all duration-200"
+                    >
+                      <svg className="w-3 h-3 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                      Export .md
+                    </button>
+                  </div>
                 </div>
                 <div className="h-80">
                   <Editor
@@ -633,20 +799,20 @@ function App() {
                   </h2>
                   <button
                     onClick={updateMarkdownWithRankings}
-                    disabled={!isApiConnected || isLoadingRankings || comparisons.length === 0}
+                    disabled={!isApiConnected || isLoadingRankings || isUpdatingMarkdown || comparisons.length === 0}
                     className={`inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md shadow-sm transition-all duration-200 ${
-                      !isApiConnected || isLoadingRankings || comparisons.length === 0 
+                      !isApiConnected || isLoadingRankings || isUpdatingMarkdown || comparisons.length === 0 
                         ? 'bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed' 
                         : 'bg-indigo-600 text-white hover:bg-indigo-700 dark:bg-indigo-700 dark:hover:bg-indigo-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-800'
                     }`}
                   >
-                    {isLoadingRankings ? (
+                    {isLoadingRankings || isUpdatingMarkdown ? (
                       <>
                         <svg className="animate-spin -ml-1 mr-2 h-3 w-3 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                         </svg>
-                        Updating...
+                        {isUpdatingMarkdown ? 'Updating...' : 'Loading...'}
                       </>
                     ) : (
                       'Update Rankings'
@@ -679,7 +845,7 @@ function App() {
                   <h2 className="text-base font-medium text-gray-700 dark:text-gray-300">Task Rankings</h2>
                 </div>
                 <div className="p-4">
-                  <TaskRankings tasks={tasks} comparisons={comparisons} />
+                  <TaskRankings tasks={tasks} comparisons={comparisons} listId={listId} />
                 </div>
               </div>
             </div>

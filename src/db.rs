@@ -235,7 +235,7 @@ impl Database {
     }
     
     // Task operations
-    pub async fn get_tasks(&self) -> Result<Vec<Task>, SqlxError> {
+    pub async fn get_tasks(&self, list_id: &str) -> Result<Vec<Task>, SqlxError> {
         if self.memory_mode {
             // Return empty list in memory mode
             return Ok(Vec::new());
@@ -243,8 +243,9 @@ impl Database {
         
         let pool = self.pool.as_ref().unwrap();
         let rows = sqlx::query(
-            "SELECT id::text, content, completed, created_at, updated_at FROM tasks ORDER BY created_at DESC"
+            "SELECT id::text, content, completed, created_at, updated_at FROM tasks WHERE list_id = $1 ORDER BY created_at DESC"
         )
+        .bind(list_id)
         .fetch_all(pool)
         .await?;
         
@@ -257,7 +258,7 @@ impl Database {
         }).collect())
     }
     
-    pub async fn get_task_by_content(&self, content: &str) -> Result<Option<Task>, SqlxError> {
+    pub async fn get_task_by_content(&self, content: &str, list_id: &str) -> Result<Option<Task>, SqlxError> {
         if self.memory_mode {
             // Return None in memory mode
             return Ok(None);
@@ -265,9 +266,10 @@ impl Database {
         
         let pool = self.pool.as_ref().unwrap();
         let row = sqlx::query(
-            "SELECT id::text, content, completed, created_at, updated_at FROM tasks WHERE content = $1"
+            "SELECT id::text, content, completed, created_at, updated_at FROM tasks WHERE content = $1 AND list_id = $2"
         )
         .bind(content)
+        .bind(list_id)
         .fetch_optional(pool)
         .await?;
         
@@ -280,7 +282,7 @@ impl Database {
         }))
     }
 
-    pub async fn create_task(&self, content: String) -> Result<Task, SqlxError> {
+    pub async fn create_task(&self, content: String, list_id: &str) -> Result<Task, SqlxError> {
         // In memory mode, create a dummy task
         if self.memory_mode {
             let id = Uuid::new_v4();
@@ -295,7 +297,7 @@ impl Database {
         }
         
         // Check if task with this content already exists
-        if let Some(task) = self.get_task_by_content(&content).await? {
+        if let Some(task) = self.get_task_by_content(&content, list_id).await? {
             return Ok(task);
         }
         
@@ -304,8 +306,8 @@ impl Database {
         let now = Utc::now();
         
         let row = sqlx::query(
-            "INSERT INTO tasks (id, content, completed, created_at, updated_at) 
-             VALUES ($1, $2, $3, $4, $5) 
+            "INSERT INTO tasks (id, content, completed, created_at, updated_at, list_id) 
+             VALUES ($1, $2, $3, $4, $5, $6) 
              RETURNING id::text, content, completed, created_at, updated_at"
         )
         .bind(id)
@@ -313,6 +315,7 @@ impl Database {
         .bind(false)
         .bind(now)
         .bind(now)
+        .bind(list_id)
         .fetch_one(pool)
         .await?;
         
@@ -325,7 +328,7 @@ impl Database {
         })
     }
     
-    pub async fn delete_task(&self, content: &str) -> Result<bool, SqlxError> {
+    pub async fn delete_task(&self, content: &str, list_id: &str) -> Result<bool, SqlxError> {
         // In memory mode, pretend to succeed
         if self.memory_mode {
             return Ok(true);
@@ -334,7 +337,7 @@ impl Database {
         let pool = self.pool.as_ref().unwrap();
         
         // Get the task first to find its ID
-        let task = match self.get_task_by_content(content).await? {
+        let task = match self.get_task_by_content(content, list_id).await? {
             Some(t) => t,
             None => return Ok(false),
         };
@@ -344,17 +347,19 @@ impl Database {
         // Delete related comparisons first (to satisfy foreign key constraints)
         sqlx::query(
             "DELETE FROM comparisons 
-             WHERE task_a_id = $1 OR task_b_id = $1 OR winner_id = $1"
+             WHERE (task_a_id = $1 OR task_b_id = $1 OR winner_id = $1) AND list_id = $2"
         )
         .bind(uuid_id)
+        .bind(list_id)
         .execute(pool)
         .await?;
         
         // Now delete the task
         let result = sqlx::query(
-            "DELETE FROM tasks WHERE id = $1"
+            "DELETE FROM tasks WHERE id = $1 AND list_id = $2"
         )
         .bind(uuid_id)
+        .bind(list_id)
         .execute(pool)
         .await?;
             
@@ -362,7 +367,7 @@ impl Database {
     }
     
     // Comparison operations
-    pub async fn get_comparisons(&self) -> Result<Vec<Comparison>, SqlxError> {
+    pub async fn get_comparisons(&self, list_id: &str) -> Result<Vec<Comparison>, SqlxError> {
         // In memory mode, return empty list
         if self.memory_mode {
             return Ok(Vec::new());
@@ -370,8 +375,9 @@ impl Database {
         
         let pool = self.pool.as_ref().unwrap();
         let rows = sqlx::query(
-            "SELECT id::text, task_a_id::text, task_b_id::text, winner_id::text, timestamp FROM comparisons ORDER BY timestamp DESC"
+            "SELECT id::text, task_a_id::text, task_b_id::text, winner_id::text, timestamp FROM comparisons WHERE list_id = $1 ORDER BY timestamp DESC"
         )
+        .bind(list_id)
         .fetch_all(pool)
         .await?;
         
@@ -388,7 +394,8 @@ impl Database {
         &self, 
         task_a_content: &str, 
         task_b_content: &str, 
-        winner_content: &str
+        winner_content: &str,
+        list_id: &str
     ) -> Result<Comparison, SqlxError> {
         // In memory mode, create dummy comparison
         if self.memory_mode {
@@ -413,8 +420,8 @@ impl Database {
         let pool = self.pool.as_ref().unwrap();
         
         // Get or create tasks first
-        let task_a = self.create_task(task_a_content.to_string()).await?;
-        let task_b = self.create_task(task_b_content.to_string()).await?;
+        let task_a = self.create_task(task_a_content.to_string(), list_id).await?;
+        let task_b = self.create_task(task_b_content.to_string(), list_id).await?;
         
         let winner_id = if winner_content == task_a_content {
             Uuid::parse_str(&task_a.id).unwrap()
@@ -430,14 +437,15 @@ impl Database {
         let id = Uuid::new_v4();
         
         let row = sqlx::query(
-            "INSERT INTO comparisons (id, task_a_id, task_b_id, winner_id, timestamp) 
-             VALUES ($1, $2, $3, $4, NOW()) 
+            "INSERT INTO comparisons (id, task_a_id, task_b_id, winner_id, timestamp, list_id) 
+             VALUES ($1, $2, $3, $4, NOW(), $5) 
              RETURNING id::text, task_a_id::text, task_b_id::text, winner_id::text, timestamp"
         )
         .bind(id)
         .bind(task_a_id)
         .bind(task_b_id)
         .bind(winner_id)
+        .bind(list_id)
         .fetch_one(pool)
         .await?;
         

@@ -6,9 +6,10 @@ import type { RankedTask } from '../utils/apiClient';
 interface TaskRankingsProps {
   tasks: Task[];
   comparisons: Comparison[];
+  listId: string;
 }
 
-const TaskRankings: React.FC<TaskRankingsProps> = ({ tasks, comparisons }) => {
+const TaskRankings: React.FC<TaskRankingsProps> = ({ tasks, comparisons, listId }) => {
   const [rankedTasks, setRankedTasks] = useState<RankedTask[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -16,8 +17,8 @@ const TaskRankings: React.FC<TaskRankingsProps> = ({ tasks, comparisons }) => {
   // Fetch rankings from the API when tasks or comparisons change
   useEffect(() => {
     const fetchRankings = async () => {
-      // Only fetch if we have tasks and comparisons
-      if (tasks.length === 0 || comparisons.length === 0) {
+      // If no tasks, reset rankings and return
+      if (tasks.length === 0) {
         setRankedTasks([]);
         return;
       }
@@ -26,30 +27,68 @@ const TaskRankings: React.FC<TaskRankingsProps> = ({ tasks, comparisons }) => {
       setError(null);
 
       try {
-        const rankings = await rankingsApi.getRankings();
-        
-        // Filter rankings to only include tasks that exist in the editor
-        const taskContents = tasks.map(task => task.content);
-        const filteredRankings = rankings.filter(rankedTask => 
-          taskContents.includes(rankedTask.content)
-        );
-        
-        // Renumber ranks to be sequential after filtering
-        const rerankedTasks = filteredRankings
-          .sort((a, b) => a.score > b.score ? -1 : 1) // Sort by score descending
-          .map((task, idx) => ({
-            ...task,
-            rank: idx + 1 // Re-assign ranks (1-based)
+        // If we have comparisons, fetch from API
+        if (comparisons.length > 0) {
+          const rankings = await rankingsApi.getRankings(listId);
+          
+          // Get all current task contents
+          const taskContents = tasks.map(task => task.content);
+          
+          // Filter API rankings to only include tasks that exist in the editor
+          const apiRankedTasks = rankings.filter(rankedTask => 
+            taskContents.includes(rankedTask.content)
+          );
+          
+          // Find tasks that don't have API rankings yet
+          const rankedTaskContents = apiRankedTasks.map(task => task.content);
+          const unrankedTasks = tasks.filter(task => 
+            !rankedTaskContents.includes(task.content)
+          );
+          
+          // Create default rankings for unranked tasks (score 0)
+          const defaultRankedTasks = unrankedTasks.map(task => ({
+            id: task.id,
+            content: task.content,
+            completed: task.completed,
+            line: task.line,
+            score: 0,
+            rank: 0 // Will be reassigned below
           }));
-        
-        setRankedTasks(rerankedTasks);
+          
+          // Combine API rankings with default rankings
+          const allTasks = [...apiRankedTasks, ...defaultRankedTasks];
+          
+          // Sort all tasks by score descending and reassign ranks
+          const rerankedTasks = allTasks
+            .sort((a, b) => a.score > b.score ? -1 : 1) // Sort by score descending
+            .map((task, idx) => ({
+              ...task,
+              rank: idx + 1 // Re-assign ranks (1-based)
+            }));
+          
+          setRankedTasks(rerankedTasks);
+        } else {
+          // If no comparisons yet, show tasks with default ranks and scores
+          const defaultRankedTasks = tasks.map((task, index) => ({
+            id: task.id,
+            content: task.content,
+            completed: task.completed,
+            line: task.line,
+            score: 0,
+            rank: index + 1
+          }));
+          setRankedTasks(defaultRankedTasks);
+        }
       } catch (err) {
         console.error('Failed to fetch rankings:', err);
         setError('Failed to fetch rankings. Using local sorting as fallback.');
         
         // Fallback to our local calculation if the API call fails
         const localRankedTasks = tasks.map((task, index) => ({
-          ...task,
+          id: task.id,
+          content: task.content,
+          completed: task.completed,
+          line: task.line,
           score: 0,
           rank: index + 1
         }));
@@ -60,7 +99,7 @@ const TaskRankings: React.FC<TaskRankingsProps> = ({ tasks, comparisons }) => {
     };
 
     fetchRankings();
-  }, [tasks, comparisons]);
+  }, [tasks, comparisons, listId]);
 
   // Show loading state
   if (loading) {
@@ -133,42 +172,32 @@ const TaskRankings: React.FC<TaskRankingsProps> = ({ tasks, comparisons }) => {
     );
   }
 
-  if (comparisons.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center py-8 text-center">
-        <div className="w-16 h-16 mb-4 text-gray-300 dark:text-gray-600">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" />
-          </svg>
-        </div>
-        <h3 className="text-lg font-medium text-gray-700 dark:text-gray-300 mb-1">No Comparisons Yet</h3>
-        <p className="text-gray-500 dark:text-gray-400 max-w-sm">
-          Compare tasks to generate rankings. The more comparisons you make, the more accurate the rankings will be.
-        </p>
-      </div>
-    );
-  }
-
-  // Show rankings
+  // Show rankings (now handles both with and without comparisons)
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-medium text-gray-800 dark:text-gray-200">Rankings</h3>
         
-        <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
-          <div className="flex items-center">
-            <span className="inline-block w-3 h-3 rounded-full bg-emerald-400 dark:bg-emerald-500 mr-1"></span>
-            <span>High</span>
+        {comparisons.length === 0 ? (
+          <div className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-2 py-1 rounded">
+            No comparisons yet - make comparisons to improve rankings
           </div>
-          <div className="flex items-center">
-            <span className="inline-block w-3 h-3 rounded-full bg-amber-400 dark:bg-amber-500 mr-1"></span>
-            <span>Medium</span>
+        ) : (
+          <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+            <div className="flex items-center">
+              <span className="inline-block w-3 h-3 rounded-full bg-emerald-400 dark:bg-emerald-500 mr-1"></span>
+              <span>High</span>
+            </div>
+            <div className="flex items-center">
+              <span className="inline-block w-3 h-3 rounded-full bg-amber-400 dark:bg-amber-500 mr-1"></span>
+              <span>Medium</span>
+            </div>
+            <div className="flex items-center">
+              <span className="inline-block w-3 h-3 rounded-full bg-red-400 dark:bg-red-500 mr-1"></span>
+              <span>Low</span>
+            </div>
           </div>
-          <div className="flex items-center">
-            <span className="inline-block w-3 h-3 rounded-full bg-red-400 dark:bg-red-500 mr-1"></span>
-            <span>Low</span>
-          </div>
-        </div>
+        )}
       </div>
       
       <div className="overflow-y-auto max-h-[400px] -mr-4 pr-4">

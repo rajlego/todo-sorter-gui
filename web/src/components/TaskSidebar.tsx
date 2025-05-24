@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { extractTasks } from '../utils/markdownUtils';
 import type { Task } from '../utils/markdownUtils';
 
@@ -7,8 +7,8 @@ interface TaskSidebarProps {
 }
 
 const TaskSidebar: React.FC<TaskSidebarProps> = ({ markdown }) => {
-  // Use the shared extractTasks function
-  const tasks = extractTasks(markdown);
+  // Memoize task extraction to avoid recalculating on every render
+  const tasks = useMemo(() => extractTasks(markdown), [markdown]);
   
   return (
     <div>
@@ -20,45 +20,45 @@ const TaskSidebar: React.FC<TaskSidebarProps> = ({ markdown }) => {
             </svg>
           </div>
           <p className="text-gray-500 dark:text-gray-400">
-            No tasks found. Add tasks using the <code className="text-xs bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded">- [ ] Task description</code> format.
+            No tasks found. Add tasks by typing each task on a new line. Use <code className="text-xs bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded"># Comment</code> for comments.
           </p>
         </div>
       ) : (
-        <ul className="space-y-2 py-1">
-          {tasks.map((task) => (
-            <li 
-              key={task.id}
-              className={`group p-2 rounded-lg transition-all duration-200 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 ${
-                task.completed ? 'text-gray-400 dark:text-gray-500' : 'text-gray-700 dark:text-gray-300'
-              }`}
+        <div className="space-y-2">
+          {tasks.map((task, index) => (
+            <div 
+              key={`task-${index}-${task.content}`} 
+              className="flex items-start space-x-3 p-2 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-100 dark:border-gray-700"
             >
-              <div className="flex items-start">
-                <span className={`mt-0.5 w-5 h-5 border flex-shrink-0 flex items-center justify-center rounded transition-colors ${
-                  task.completed 
-                    ? 'bg-indigo-100 dark:bg-indigo-900/40 border-indigo-300 dark:border-indigo-700' 
-                    : 'border-gray-300 dark:border-gray-600 group-hover:border-indigo-400 dark:group-hover:border-indigo-500'
-                }`}>
-                  {task.completed && (
-                    <svg className="w-3 h-3 text-indigo-600 dark:text-indigo-400" fill="currentColor" viewBox="0 0 20 20">
+              <div className="flex-shrink-0 mt-0.5">
+                {task.completed ? (
+                  <div className="w-4 h-4 bg-green-500 rounded border-2 border-green-500 flex items-center justify-center">
+                    <svg className="w-2 h-2 text-white" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                     </svg>
-                  )}
-                </span>
-                <span className={`ml-3 ${task.completed ? 'line-through' : ''}`}>
-                  {task.content}
-                  {task.rank && (
-                    <span className="ml-2 text-xs inline-flex items-center px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400">
-                      Rank: {task.rank} ({task.score?.toFixed(2)})
-                    </span>
-                  )}
-                </span>
+                  </div>
+                ) : (
+                  <div className="w-4 h-4 border-2 border-gray-300 dark:border-gray-600 rounded"></div>
+                )}
               </div>
-            </li>
+              <div className="flex-grow min-w-0">
+                <p className={`text-sm break-words ${
+                  task.completed 
+                    ? 'text-gray-500 dark:text-gray-400 line-through' 
+                    : 'text-gray-700 dark:text-gray-300'
+                }`}>
+                  {task.content}
+                </p>
+                <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                  Line {task.line + 1} • {task.completed ? 'Completed' : 'Pending'}
+                </p>
+              </div>
+            </div>
           ))}
-        </ul>
+        </div>
       )}
     </div>
   );
 };
 
-export default TaskSidebar; 
+export default React.memo(TaskSidebar); 

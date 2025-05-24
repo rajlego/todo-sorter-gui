@@ -51,9 +51,9 @@ interface TaskResponse {
 // API endpoints for comparisons
 export const comparisonsApi = {
   // Get all comparisons
-  getAllComparisons: async (): Promise<Comparison[]> => {
+  getAllComparisons: async (listId: string): Promise<Comparison[]> => {
     try {
-      const response = await apiClient.get('/comparisons/content');
+      const response = await apiClient.post('/comparisons/content', { list_id: listId });
       
       const comparisons = response.data.comparisons.map((comp: any) => ({
         id: generateId(),
@@ -62,7 +62,7 @@ export const comparisonsApi = {
         winner: { id: generateId(), content: comp.winner_content, completed: false, line: 0 },
         timestamp: new Date(comp.timestamp)
       }));
-      logApiOperation('getAllComparisons', { count: comparisons.length });
+      logApiOperation('getAllComparisons', { count: comparisons.length, listId });
       return comparisons;
     } catch (error) {
       logApiOperation('getAllComparisons', undefined, error);
@@ -71,12 +71,13 @@ export const comparisonsApi = {
   },
 
   // Add a new comparison using task content
-  addComparison: async (comparison: Omit<Comparison, 'id' | 'timestamp'>): Promise<Comparison> => {
+  addComparison: async (comparison: Omit<Comparison, 'id' | 'timestamp'>, listId: string): Promise<Comparison> => {
     try {
       const payload = {
         task_a_content: comparison.taskA.content,
         task_b_content: comparison.taskB.content,
-        winner_content: comparison.winner.content
+        winner_content: comparison.winner.content,
+        list_id: listId
       };
       
       logApiOperation('addComparison - request', payload);
@@ -94,7 +95,7 @@ export const comparisonsApi = {
 
       // Send the comparison to the API
       try {
-        const response = await apiClient.post('/comparisons', payload);
+        const response = await apiClient.post('/comparisons/add', payload);
         logApiOperation('addComparison - response', response.data);
       } catch (err: any) {
         logApiOperation('addComparison', payload, err);
@@ -118,10 +119,10 @@ export const comparisonsApi = {
 // API endpoint for rankings
 export const rankingsApi = {
   // Get task rankings
-  getRankings: async (): Promise<RankedTask[]> => {
-    logApiOperation('getRankings - starting');
+  getRankings: async (listId: string): Promise<RankedTask[]> => {
+    logApiOperation('getRankings - starting', { listId });
     try {
-      const response = await apiClient.get('/rankings');
+      const response = await apiClient.post('/rankings', { list_id: listId });
       logApiOperation('getRankings - received', response.data);
       
       if (!response.data.rankings || !Array.isArray(response.data.rankings)) {
@@ -141,7 +142,7 @@ export const rankingsApi = {
         };
       });
       
-      logApiOperation('getRankings - processed', { count: rankings.length });
+      logApiOperation('getRankings - processed', { count: rankings.length, listId });
       return rankings;
     } catch (error) {
       logApiOperation('getRankings', undefined, error);
@@ -191,10 +192,10 @@ const generateId = (): string => {
 // Tasks API for managing tasks directly
 export const tasksApi = {
   // Get all tasks
-  getAllTasks: async (): Promise<string[]> => {
-    logApiOperation('getAllTasks - starting');
+  getAllTasks: async (listId: string): Promise<string[]> => {
+    logApiOperation('getAllTasks - starting', { listId });
     try {
-      const response = await apiClient.get('/tasks');
+      const response = await apiClient.post('/tasks', { list_id: listId });
       logApiOperation('getAllTasks - received', response.data);
       
       // The updated API now returns an array of task objects with content and completed properties
@@ -212,37 +213,39 @@ export const tasksApi = {
   },
   
   // Delete a task by content
-  deleteTask: async (content: string): Promise<boolean> => {
-    logApiOperation('deleteTask - starting', { content });
+  deleteTask: async (content: string, listId: string): Promise<boolean> => {
+    logApiOperation('deleteTask - starting', { content, listId });
     try {
-      const response = await apiClient.delete('/tasks', { 
-        data: { content } 
+      const response = await apiClient.post('/tasks/delete', { 
+        content,
+        list_id: listId
       });
       logApiOperation('deleteTask - received', response.data);
       return true;
     } catch (error) {
-      logApiOperation('deleteTask', { content }, error);
+      logApiOperation('deleteTask', { content, listId }, error);
       throw error;
     }
   },
   
   // Register a new task
-  registerTask: async (content: string): Promise<boolean> => {
-    logApiOperation('registerTask - starting', { content });
+  registerTask: async (content: string, listId: string): Promise<boolean> => {
+    logApiOperation('registerTask - starting', { content, listId });
     try {
       // To register a task, we create a dummy comparison where taskA and taskB are both the new task
       // and the winner is also the new task
       const payload = {
         task_a_content: content,
         task_b_content: content,
-        winner_content: content
+        winner_content: content,
+        list_id: listId
       };
       
-      const response = await apiClient.post('/comparisons', payload);
+      const response = await apiClient.post('/comparisons/add', payload);
       logApiOperation('registerTask - received', response.data);
       return true;
     } catch (error) {
-      logApiOperation('registerTask', { content }, error);
+      logApiOperation('registerTask', { content, listId }, error);
       throw error;
     }
   }
