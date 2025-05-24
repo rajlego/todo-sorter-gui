@@ -75,6 +75,73 @@ Schedule dentist appointment
   // Cache tasks to prevent disappearing during updates
   const cachedTasksRef = useRef<Task[]>([]);
 
+  // To track tasks that previously had ranking data
+  const [previousTasksWithRankings, setPreviousTasksWithRankings] = useState<Set<string>>(new Set());
+  
+  // Detect when users manually clear ranking info from tasks
+  const detectClearedScores = useCallback((currentTasks: Task[], previousRankingTasks: Set<string>) => {
+    const currentTaskContents = new Set(currentTasks.map(task => task.content));
+    const clearedTasks: string[] = [];
+    
+    // Find tasks that previously had rankings but no longer do
+    previousRankingTasks.forEach(taskContent => {
+      if (currentTaskContents.has(taskContent)) {
+        // Task still exists but check if it has ranking info in the raw markdown
+        const taskLines = markdownContent.split('\n').filter(line => {
+          const trimmedLine = line.trim();
+          return trimmedLine.includes(taskContent) && trimmedLine.includes('| Rank:');
+        });
+        
+        if (taskLines.length === 0) {
+          // Task exists but no longer has ranking info - user cleared it
+          clearedTasks.push(taskContent);
+        }
+      }
+    });
+    
+    return clearedTasks;
+  }, [markdownContent]);
+  
+  // Clear comparisons for specific tasks
+  const clearComparisonsForTasks = useCallback(async (taskContents: string[]) => {
+    if (taskContents.length === 0) return;
+    
+    console.log('Clearing comparisons for tasks:', taskContents);
+    
+    // Filter out comparisons involving the cleared tasks
+    const filteredComparisons = comparisons.filter(comparison => {
+      const isInvolvedInComparison = 
+        taskContents.includes(comparison.taskA.content) ||
+        taskContents.includes(comparison.taskB.content);
+      return !isInvolvedInComparison;
+    });
+    
+    // Update comparisons state
+    setComparisons(filteredComparisons);
+    
+    // Update localStorage
+    localStorage.setItem('comparisons', JSON.stringify(filteredComparisons));
+    
+    // Clear from API if connected
+    if (isApiConnected) {
+      // Note: The API doesn't have a direct "clear comparisons for task" endpoint
+      // So we'd need to implement this on the backend or reload the comparisons
+      console.log('API connected - would need backend support to clear specific comparisons');
+      setApiStatus(`Cleared comparisons for ${taskContents.length} tasks locally`);
+    }
+    
+    // Clear rankings for these tasks
+    const filteredRankings = rankedTasks.filter(rankedTask => 
+      !taskContents.includes(rankedTask.content)
+    );
+    setRankedTasks(filteredRankings);
+    
+    // Reset ASAP stats
+    setAsapStats(null);
+    
+    console.log(`Cleared comparisons: ${comparisons.length} -> ${filteredComparisons.length}`);
+  }, [comparisons, rankedTasks, isApiConnected]);
+
   // Save the listId to localStorage whenever it changes (including initial generation)
   useEffect(() => {
     if (listId && listId.length >= 8) {
@@ -225,6 +292,11 @@ Schedule dentist appointment
         setMarkdownContent(updatedMarkdown);
         localStorage.setItem('markdown-content', updatedMarkdown);
         setApiStatus('Markdown updated with latest rankings');
+        
+        // Update tracking of tasks with rankings
+        const tasksWithRankings = new Set(Array.from(contentRankMap.keys()));
+        setPreviousTasksWithRankings(tasksWithRankings);
+        console.log('Updated tracking for tasks with rankings after markdown update:', tasksWithRankings);
       }, 50);
       
       return true;
@@ -247,11 +319,25 @@ Schedule dentist appointment
     return updateMarkdownWithRankingsByContent();
   }, [updateMarkdownWithRankingsByContent]);
 
-  // Optimized editor change handler with better debouncing
+  // Optimized editor change handler with score clearing detection
   const handleEditorChange = useCallback((value: string) => {
     // Skip if we're in the middle of a ranking update to prevent conflicts
     if (rankingUpdateInProgress.current) {
       return;
+    }
+    
+    // Before updating, check if user manually cleared scores
+    const currentTasks = extractTasks(value);
+    const clearedTasks = detectClearedScores(currentTasks, previousTasksWithRankings);
+    
+    if (clearedTasks.length > 0) {
+      console.log('Detected manually cleared scores for tasks:', clearedTasks);
+      clearComparisonsForTasks(clearedTasks);
+      
+      // Update the tracking set
+      const newTrackingSet = new Set(previousTasksWithRankings);
+      clearedTasks.forEach(taskContent => newTrackingSet.delete(taskContent));
+      setPreviousTasksWithRankings(newTrackingSet);
     }
     
     // Update the content immediately for responsiveness
@@ -267,7 +353,7 @@ Schedule dentist appointment
       localStorage.setItem('markdown-content', value);
       markdownDebounceTimeout.current = null;
     }, 1000) as unknown as number;
-  }, []);
+  }, [detectClearedScores, clearComparisonsForTasks, previousTasksWithRankings]);
 
   // Optimized fetch rankings with better throttling
   const fetchRankings = useCallback(async () => {
@@ -307,6 +393,11 @@ Schedule dentist appointment
       setRankedTasks(filteredRankings);
       setAsapStats(response.stats);
       console.log('Updated ASAP stats:', response.stats);
+      
+      // Update tracking of tasks with rankings
+      const tasksWithRankings = new Set(filteredRankings.map(task => task.content));
+      setPreviousTasksWithRankings(tasksWithRankings);
+      console.log('Updated tracking for tasks with rankings:', tasksWithRankings);
       
       return filteredRankings;
     } catch (error) {
@@ -707,6 +798,49 @@ Schedule dentist appointment
     }
   }, [isApiConnected, listId, fetchRankings]);
 
+  // Handle clearing all scores and comparisons
+  const handleClearAllScores = useCallback(async () => {
+    console.log('Clearing all scores and comparisons...');
+    
+    // Remove all ranking info from markdown
+    const lines = markdownContent.split('\n');
+    const cleanedLines = lines.map(line => {
+      // Remove ranking info from any line that has it
+      const rankingMatch = line.match(/^(.+?)\s+\|\s+Rank:\s+\d+\s+\|\s+Score:\s+[-\d.]+.*$/);
+      if (rankingMatch) {
+        return rankingMatch[1]; // Return just the task content without ranking info
+      }
+      return line;
+    });
+    
+    const cleanedMarkdown = cleanedLines.join('\n');
+    
+    // Update markdown content
+    setMarkdownContent(cleanedMarkdown);
+    localStorage.setItem('markdown-content', cleanedMarkdown);
+    
+    // Clear all comparisons
+    setComparisons([]);
+    localStorage.removeItem('comparisons');
+    
+    // Clear rankings and stats
+    setRankedTasks([]);
+    setAsapStats(null);
+    
+    // Clear tracking
+    setPreviousTasksWithRankings(new Set());
+    
+    // Clear from API if connected
+    if (isApiConnected) {
+      setApiStatus('Cleared all scores and comparisons - fresh start!');
+      // Note: Would need backend support to fully clear API data
+    } else {
+      setApiStatus('Cleared all scores and comparisons locally');
+    }
+    
+    console.log('All scores and comparisons cleared successfully');
+  }, [markdownContent, isApiConnected]);
+
   return (
     <div className="flex flex-col min-h-screen w-full bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-gray-900 dark:to-gray-800 text-gray-900 dark:text-gray-100">
       {/* Modern Navbar */}
@@ -801,6 +935,16 @@ Schedule dentist appointment
                 <h2 className="text-base font-medium text-gray-700 dark:text-gray-300">Task List (Auto-Sorted)</h2>
                 <div className="flex items-center space-x-3">
                   <div className="text-xs text-gray-500 dark:text-gray-400 italic">Each line is a task. Use - for lists. Auto-sorts by ranking after comparisons.</div>
+                  <button
+                    onClick={handleClearAllScores}
+                    className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md shadow-sm bg-red-600 text-white hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 dark:focus:ring-offset-gray-800 transition-all duration-200"
+                    title="Clear all ranking information and start fresh"
+                  >
+                    <svg className="w-3 h-3 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                    Clear Scores
+                  </button>
                   <button
                     onClick={handleExportMarkdown}
                     className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md shadow-sm bg-green-600 text-white hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 dark:focus:ring-offset-gray-800 transition-all duration-200"
