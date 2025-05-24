@@ -85,7 +85,7 @@ export const extractTasks = (markdown: string): Task[] => {
     }
     
     // Check if this task already has ranking info and strip it for the task content
-    const rankingMatch = content.match(/^(.+?)\s+\|\s+Rank:\s+(\d+)\s+\|\s+Score:\s+([-\d.]+)$/);
+    const rankingMatch = content.match(/^(.+?)\s+\|\s+Rank:\s+\d+\s+\|\s+Score:\s+[-\d.]+.*$/);
     if (rankingMatch) {
       // Strip ranking info from content and store rank/score
       content = rankingMatch[1];
@@ -109,7 +109,7 @@ export const extractTasks = (markdown: string): Task[] => {
 /**
  * Sort markdown content by rankings (auto-sort after comparisons)
  * @param markdown Original markdown content
- * @param rankedTasks Array of ranked tasks with scores
+ * @param rankedTasks Array of ranked tasks with scores and ASAP statistics
  * @returns Sorted markdown content
  */
 export const sortMarkdownByRankings = (markdown: string, rankedTasks: any[]): string => {
@@ -119,147 +119,146 @@ export const sortMarkdownByRankings = (markdown: string, rankedTasks: any[]): st
   const taskLines: { line: string, rank: number, score: number, completed: boolean, originalFormat: string, originalPrefix: string }[] = [];
   const nonTaskLines: { line: string, index: number }[] = [];
   
+  // Create a map of task content to full ranking data with ASAP statistics
+  const contentRankMap = new Map();
+  rankedTasks.forEach(task => {
+    contentRankMap.set(task.content, {
+      score: task.score,
+      rank: task.rank,
+      variance: task.variance || 0,
+      confidence_interval: task.confidence_interval || [0, 0],
+      comparisons_count: task.comparisons_count || 0
+    });
+  });
+  
   // Separate task lines from non-task lines (comments, empty lines)
   lines.forEach((line, index) => {
     const trimmedLine = line.trim();
+    
+    // Skip empty lines and comments - they'll stay in place
     if (!trimmedLine || trimmedLine.startsWith('#')) {
       nonTaskLines.push({ line, index });
       return;
     }
     
-    let content = '';
+    let content = trimmedLine;
     let completed = false;
-    let originalFormat = 'plain'; // 'plain', 'list', 'checkbox'
     let originalPrefix = '';
+    let originalFormat = 'plain'; // 'plain', 'dash', 'checkbox_empty', 'checkbox_checked', 'checkmark'
     
-    // Extract content from various formats and track original format
-    if (trimmedLine.match(/^-\s+\[x\]\s+(.+)$/)) {
-      const match = trimmedLine.match(/^-\s+\[x\]\s+(.+)$/);
-      completed = true;
-      content = match![1];
-      originalFormat = 'checkbox';
-      originalPrefix = '- [x] ';
-    } else if (trimmedLine.match(/^-\s+\[\s\]\s+(.+)$/)) {
-      const match = trimmedLine.match(/^-\s+\[\s\]\s+(.+)$/);
-      completed = false;
-      content = match![1];
-      originalFormat = 'checkbox';
-      originalPrefix = '- [ ] ';
-    } else if (trimmedLine.match(/^-\s+✓\s+(.+)$/)) {
-      const match = trimmedLine.match(/^-\s+✓\s+(.+)$/);
-      completed = true;
-      content = match![1];
-      originalFormat = 'list';
-      originalPrefix = '- ✓ ';
-    } else if (trimmedLine.match(/^-\s+(.+)$/)) {
-      const match = trimmedLine.match(/^-\s+(.+)$/);
-      completed = false;
-      content = match![1];
-      originalFormat = 'list';
+    // Detect and preserve original format
+    if (trimmedLine.startsWith('- ')) {
+      originalFormat = 'dash';
       originalPrefix = '- ';
-    } else if (trimmedLine.match(/^✓\s+(.+)$/)) {
-      const match = trimmedLine.match(/^✓\s+(.+)$/);
-      completed = true;
-      content = match![1];
-      originalFormat = 'plain';
+      content = trimmedLine.substring(2).trim();
+    } else if (trimmedLine.startsWith('✓ ')) {
+      originalFormat = 'checkmark';
       originalPrefix = '✓ ';
-    } else if (trimmedLine.match(/^\[x\]\s+(.+)$/)) {
-      const match = trimmedLine.match(/^\[x\]\s+(.+)$/);
       completed = true;
-      content = match![1];
-      originalFormat = 'plain';
+      content = trimmedLine.substring(2).trim();
+    } else if (trimmedLine.startsWith('- ✓ ')) {
+      originalFormat = 'dash_checkmark';
+      originalPrefix = '- ✓ ';
+      completed = true;
+      content = trimmedLine.substring(4).trim();
+    } else if (trimmedLine.startsWith('[x] ')) {
+      originalFormat = 'checkbox_checked';
       originalPrefix = '[x] ';
-    } else if (trimmedLine.match(/^\[\s\]\s+(.+)$/)) {
-      const match = trimmedLine.match(/^\[\s\]\s+(.+)$/);
-      completed = false;
-      content = match![1];
-      originalFormat = 'plain';
+      completed = true;
+      content = trimmedLine.substring(4).trim();
+    } else if (trimmedLine.startsWith('- [x] ')) {
+      originalFormat = 'dash_checkbox_checked';
+      originalPrefix = '- [x] ';
+      completed = true;
+      content = trimmedLine.substring(6).trim();
+    } else if (trimmedLine.startsWith('[ ] ')) {
+      originalFormat = 'checkbox_empty';
       originalPrefix = '[ ] ';
-    } else {
-      // Plain text line
-      content = trimmedLine;
-      completed = false;
-      originalFormat = 'plain';
-      originalPrefix = '';
+      content = trimmedLine.substring(4).trim();
+    } else if (trimmedLine.startsWith('- [ ] ')) {
+      originalFormat = 'dash_checkbox_empty';
+      originalPrefix = '- [ ] ';
+      content = trimmedLine.substring(6).trim();
     }
     
-    // Skip if this looks like a non-task line
-    if (!content) {
-      nonTaskLines.push({ line, index });
-      return;
-    }
-    
-    // Strip existing ranking info
-    const rankingMatch = content.match(/^(.+?)\s+\|\s+Rank:\s+\d+\s+\|\s+Score:\s+[-\d.]+$/);
+    // Remove existing ranking info if present (updated regex to match new format)
+    const rankingMatch = content.match(/^(.+?)\s+\|\s+Rank:\s+\d+\s+\|\s+Score:\s+[-\d.]+.*$/);
     if (rankingMatch) {
       content = rankingMatch[1];
     }
     
-    // Find ranking data for this task
-    const rankData = rankedTasks.find(task => task.content === content);
-    const rank = rankData ? rankData.rank : 999;
-    const score = rankData ? rankData.score : 0;
+    const rankData = contentRankMap.get(content);
     
-    taskLines.push({ line: content, rank, score, completed, originalFormat, originalPrefix });
+    if (rankData) {
+      taskLines.push({
+        line,
+        rank: rankData.rank,
+        score: rankData.score,
+        completed,
+        originalFormat,
+        originalPrefix
+      });
+    } else {
+      // This is a line that looks like a task but doesn't have ranking data
+      nonTaskLines.push({ line, index });
+    }
   });
   
-  // Sort task lines by rank (lower rank = higher priority)
+  // Sort task lines by rank, with completed tasks at the bottom
   taskLines.sort((a, b) => {
-    // Completed tasks go to bottom
     if (a.completed && !b.completed) return 1;
     if (!a.completed && b.completed) return -1;
-    // Within same completion status, sort by rank
     return a.rank - b.rank;
   });
   
-  // Rebuild markdown with sorted tasks, preserving original format
-  const sortedLines: string[] = [];
+  // Rebuild the markdown content
+  const rebuiltLines: string[] = [];
   
-  // Add header comments at the top
-  nonTaskLines
-    .filter(item => item.index < 3) // Keep initial comments
-    .forEach(item => sortedLines.push(item.line));
-  
-  // Add sorted tasks - preserve original formatting
-  taskLines.forEach(({ line, rank, score, completed, originalFormat, originalPrefix }) => {
-    let taskLine = '';
-    
-    // Reconstruct the task line with original formatting
-    if (originalFormat === 'checkbox') {
-      // Use checkbox format
-      if (completed) {
-        taskLine = `- [x] ${line}`;
-      } else {
-        taskLine = `- [ ] ${line}`;
-      }
-    } else if (originalFormat === 'list') {
-      // Use list format
-      if (completed) {
-        taskLine = `- ✓ ${line}`;
-      } else {
-        taskLine = `- ${line}`;
-      }
-    } else {
-      // Use plain text format (preserve original prefix if any)
-      taskLine = `${originalPrefix}${line}`;
-    }
-    
-    // Add ranking info if available
-    if (rank !== 999 && score !== 0) {
-      taskLine += ` | Rank: ${rank} | Score: ${score.toFixed(2)}`;
-    }
-    
-    sortedLines.push(taskLine);
+  // Add non-task lines at the top (comments, headers, etc.)
+  const topNonTaskLines = nonTaskLines.filter(item => item.index < taskLines.length);
+  topNonTaskLines.forEach(item => {
+    rebuiltLines.push(item.line);
   });
   
-  // Add any trailing comments
-  nonTaskLines
-    .filter(item => item.index >= lines.length - 2) // Keep trailing comments
-    .forEach(item => sortedLines.push(item.line));
+  // Add sorted task lines with enhanced ASAP statistics
+  taskLines.forEach(taskInfo => {
+    const rankData = contentRankMap.get(taskInfo.line.replace(taskInfo.originalPrefix, '').split(' |')[0].trim());
+    
+    if (rankData) {
+      // Enhanced ranking info with ASAP statistics
+      const confidence = rankData.confidence_interval;
+      const confidenceRange = `[${confidence[0].toFixed(2)}, ${confidence[1].toFixed(2)}]`;
+      
+      // Create detailed ASAP info
+      const detailedStats = [
+        `Rank: ${rankData.rank}`,
+        `Score: ${rankData.score.toFixed(2)}`,
+        `Variance: ${rankData.variance.toFixed(3)}`,
+        `CI: ${confidenceRange}`,
+        `Comps: ${rankData.comparisons_count}`
+      ].join(' | ');
+      
+      // Get the base content without existing ranking info
+      let baseContent = taskInfo.line;
+      const existingRankMatch = baseContent.match(/^(.+?)\s+\|\s+Rank:/);
+      if (existingRankMatch) {
+        baseContent = existingRankMatch[1];
+      }
+      
+      const enhancedLine = `${baseContent} | ${detailedStats}`;
+      rebuiltLines.push(enhancedLine);
+    } else {
+      rebuiltLines.push(taskInfo.line);
+    }
+  });
   
-  const result = sortedLines.join('\n');
-  console.log('Auto-sorting completed');
-  return result;
+  // Add remaining non-task lines at the bottom
+  const bottomNonTaskLines = nonTaskLines.filter(item => item.index >= taskLines.length);
+  bottomNonTaskLines.forEach(item => {
+    rebuiltLines.push(item.line);
+  });
+  
+  return rebuiltLines.join('\n');
 };
 
 /**

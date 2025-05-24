@@ -130,7 +130,10 @@ Schedule dentist appointment
         .forEach(apiTask => {
           contentRankMap.set(apiTask.content, {
             score: apiTask.score,
-            rank: apiTask.rank
+            rank: apiTask.rank,
+            variance: apiTask.variance || 0,
+            confidence_interval: apiTask.confidence_interval || [0, 0],
+            comparisons_count: apiTask.comparisons_count || 0
           });
         });
       
@@ -167,7 +170,7 @@ Schedule dentist appointment
         }
         
         // Remove existing ranking info if present
-        const rankingMatch = content.match(/^(.+?)\s+\|\s+Rank:\s+\d+\s+\|\s+Score:\s+[-\d.]+$/);
+        const rankingMatch = content.match(/^(.+?)\s+\|\s+Rank:\s+\d+\s+\|\s+Score:\s+[-\d.]+.*$/);
         if (rankingMatch) {
           content = rankingMatch[1];
         }
@@ -177,8 +180,21 @@ Schedule dentist appointment
         if (rankData) {
           // Base task with completion prefix
           const baseTask = `${prefix}${content}`;
-          // New task with ranking
-          const newLine = `${baseTask} | Rank: ${rankData.rank} | Score: ${rankData.score.toFixed(2)}`;
+          
+          // Enhanced ranking info with ASAP statistics
+          const confidence = rankData.confidence_interval;
+          const confidenceRange = `[${confidence[0].toFixed(2)}, ${confidence[1].toFixed(2)}]`;
+          
+          // Create detailed ASAP info
+          const detailedStats = [
+            `Rank: ${rankData.rank}`,
+            `Score: ${rankData.score.toFixed(2)}`,
+            `Variance: ${rankData.variance.toFixed(3)}`,
+            `CI: ${confidenceRange}`,
+            `Comps: ${rankData.comparisons_count}`
+          ].join(' | ');
+          
+          const newLine = `${baseTask} | ${detailedStats}`;
           
           // Only consider it a change if the line is actually different
           if (newLine !== line) {
