@@ -31,7 +31,8 @@ const TaskRankings: React.FC<TaskRankingsProps> = ({ tasks, comparisons, listId 
       try {
         // If we have comparisons, fetch from API
         if (comparisons.length > 0) {
-          const response = await rankingsApi.getRankings(listId);
+          const currentTaskContents = tasks.map(task => task.content);
+          const response = await rankingsApi.getRankings(listId, currentTaskContents);
           
           // Get all current task contents
           const taskContents = tasks.map(task => task.content);

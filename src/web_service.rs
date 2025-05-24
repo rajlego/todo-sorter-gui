@@ -73,6 +73,13 @@ pub struct ListRequest {
     list_id: String,
 }
 
+// Enhanced request for getting rankings with current task contents
+#[derive(Debug, Deserialize)]
+pub struct RankingsRequest {
+    list_id: String,
+    current_tasks: Option<Vec<String>>, // Optional list of current task contents
+}
+
 #[derive(Debug, Serialize)]
 pub struct ComparisonsResponse {
     comparisons: Vec<LegacyComparison>,
@@ -426,7 +433,7 @@ async fn add_comparison(
 // Get rankings
 async fn get_rankings(
     Extension(state): Extension<Arc<AppState>>,
-    Json(payload): Json<ListRequest>,
+    Json(payload): Json<RankingsRequest>,
 ) -> impl IntoResponse {
     // First, get all comparisons from the database
     match state.db.get_comparisons(&payload.list_id).await {
@@ -479,18 +486,41 @@ async fn get_rankings(
                 }
             }
             
-            // Create task list and content to index mapping
-            let tasks: Vec<String> = all_tasks.iter().map(|t| t.content.clone()).collect();
-            let content_to_index: HashMap<String, usize> = tasks
+            // **FILTER COMPARISONS**: Only use comparisons between tasks that currently exist
+            let current_task_contents: HashSet<String> = if let Some(ref current_tasks) = payload.current_tasks {
+                // Use the current tasks from the request (more accurate)
+                tracing::info!("Using {} current tasks from request for filtering", current_tasks.len());
+                current_tasks.iter().cloned().collect()
+            } else {
+                // Fall back to tasks that appear in comparisons (less accurate)
+                tracing::info!("No current tasks provided, using {} tasks from comparisons", all_tasks.len());
+                all_tasks.iter().map(|t| t.content.clone()).collect()
+            };
+            
+            let filtered_comparisons: Vec<&crate::db::Comparison> = comparisons
                 .iter()
-                .enumerate()
-                .map(|(i, content)| (content.clone(), i))
+                .filter(|comparison| {
+                    // Check if both tasks in this comparison still exist
+                    if let (Some(task_a_content), Some(task_b_content)) = (
+                        task_contents.get(&comparison.task_a_id),
+                        task_contents.get(&comparison.task_b_id)
+                    ) {
+                        current_task_contents.contains(task_a_content) && 
+                        current_task_contents.contains(task_b_content)
+                    } else {
+                        false
+                    }
+                })
                 .collect();
-                
-            let n = tasks.len();
+            
+            tracing::info!("Filtered comparisons: {} -> {} (removed {} stale comparisons)", 
+                comparisons.len(), filtered_comparisons.len(), comparisons.len() - filtered_comparisons.len());
+            
+            // Update task count to reflect actual current tasks if provided
+            let n = current_task_contents.len();
             if n < 2 {
                 let empty_stats = ASAPStats {
-                    total_comparisons: comparisons.len(),
+                    total_comparisons: filtered_comparisons.len(),
                     unique_pairs: 0,
                     possible_pairs: 0,
                     coverage: 0.0,
@@ -508,8 +538,8 @@ async fn get_rankings(
             // Create ASAP ranker using the existing simple implementation
             let mut asap = crate::asap_cpu::ASAP::new();
             
-            // Add all comparisons to ASAP
-            for comparison in &comparisons {
+            // Add only filtered comparisons to ASAP
+            for comparison in &filtered_comparisons {
                 if let (Some(task_a_content), Some(task_b_content), Some(winner_content)) = (
                     task_contents.get(&comparison.task_a_id),
                     task_contents.get(&comparison.task_b_id),
@@ -546,9 +576,9 @@ async fn get_rankings(
                 0.0
             };
             
-            // Count unique pairs that have been compared
+            // Count unique pairs that have been compared (using filtered comparisons)
             let mut unique_pairs = HashSet::new();
-            for comparison in &comparisons {
+            for comparison in &filtered_comparisons {
                 if let (Some(task_a_content), Some(task_b_content)) = (
                     task_contents.get(&comparison.task_a_id),
                     task_contents.get(&comparison.task_b_id),
@@ -566,13 +596,13 @@ async fn get_rankings(
                 0.0
             };
             
-            // Create the rankings response with enhanced statistics
+            // Create the rankings response with enhanced statistics (using filtered comparisons)
             let mut ranked_tasks: Vec<RankedTask> = rankings
                 .iter()
                 .enumerate()
                 .map(|(index, (content, score))| {
-                    // Calculate approximate variance based on number of comparisons
-                    let comparisons_count = comparisons.iter()
+                    // Calculate approximate variance based on number of comparisons (filtered)
+                    let comparisons_count = filtered_comparisons.iter()
                         .filter(|comp| {
                             let task_a_content = task_contents.get(&comp.task_a_id);
                             let task_b_content = task_contents.get(&comp.task_b_id);
@@ -639,7 +669,7 @@ async fn get_rankings(
             };
             
             let stats = ASAPStats {
-                total_comparisons: comparisons.len(),
+                total_comparisons: filtered_comparisons.len(),
                 unique_pairs: unique_pairs.len(),
                 possible_pairs,
                 coverage,

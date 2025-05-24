@@ -381,11 +381,11 @@ Schedule dentist appointment
     
     try {
       console.log('Calling rankingsApi.getRankings()');
-      const response = await rankingsApi.getRankings(listId);
+      const currentTaskContents = tasks.map(task => task.content);
+      const response = await rankingsApi.getRankings(listId, currentTaskContents);
       console.log('Rankings response received from API:', response);
       
       // Filter rankings to only include tasks that exist in the editor
-      const currentTaskContents = tasks.map(task => task.content);
       const filteredRankings = response.rankings.filter(rankedTask => 
         currentTaskContents.includes(rankedTask.content)
       );

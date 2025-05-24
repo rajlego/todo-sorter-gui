@@ -144,10 +144,15 @@ export const comparisonsApi = {
 // API endpoint for rankings
 export const rankingsApi = {
   // Get task rankings with ASAP statistics
-  getRankings: async (listId: string): Promise<RankingsResponse> => {
-    logApiOperation('getRankings - starting', { listId });
+  getRankings: async (listId: string, currentTasks?: string[]): Promise<RankingsResponse> => {
+    logApiOperation('getRankings - starting', { listId, currentTasksCount: currentTasks?.length });
     try {
-      const response = await apiClient.post('/rankings', { list_id: listId });
+      const requestPayload = {
+        list_id: listId,
+        current_tasks: currentTasks // Send current tasks for accurate filtering
+      };
+      
+      const response = await apiClient.post('/rankings', requestPayload);
       logApiOperation('getRankings - received', response.data);
       
       if (!response.data.rankings || !Array.isArray(response.data.rankings)) {
