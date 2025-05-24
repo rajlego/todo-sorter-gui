@@ -116,7 +116,7 @@ export const sortMarkdownByRankings = (markdown: string, rankedTasks: any[]): st
   console.log('Auto-sorting markdown by rankings...');
   
   const lines = markdown.split('\n');
-  const taskLines: { line: string, rank: number, score: number, completed: boolean, wasListItem: boolean }[] = [];
+  const taskLines: { line: string, rank: number, score: number, completed: boolean, originalFormat: string, originalPrefix: string }[] = [];
   const nonTaskLines: { line: string, index: number }[] = [];
   
   // Separate task lines from non-task lines (comments, empty lines)
@@ -129,49 +129,58 @@ export const sortMarkdownByRankings = (markdown: string, rankedTasks: any[]): st
     
     let content = '';
     let completed = false;
-    let wasListItem = false;
+    let originalFormat = 'plain'; // 'plain', 'list', 'checkbox'
+    let originalPrefix = '';
     
-    // Extract content from various formats
+    // Extract content from various formats and track original format
     if (trimmedLine.match(/^-\s+\[x\]\s+(.+)$/)) {
       const match = trimmedLine.match(/^-\s+\[x\]\s+(.+)$/);
       completed = true;
       content = match![1];
-      wasListItem = true;
+      originalFormat = 'checkbox';
+      originalPrefix = '- [x] ';
     } else if (trimmedLine.match(/^-\s+\[\s\]\s+(.+)$/)) {
       const match = trimmedLine.match(/^-\s+\[\s\]\s+(.+)$/);
       completed = false;
       content = match![1];
-      wasListItem = true;
+      originalFormat = 'checkbox';
+      originalPrefix = '- [ ] ';
     } else if (trimmedLine.match(/^-\s+✓\s+(.+)$/)) {
       const match = trimmedLine.match(/^-\s+✓\s+(.+)$/);
       completed = true;
       content = match![1];
-      wasListItem = true;
+      originalFormat = 'list';
+      originalPrefix = '- ✓ ';
     } else if (trimmedLine.match(/^-\s+(.+)$/)) {
       const match = trimmedLine.match(/^-\s+(.+)$/);
       completed = false;
       content = match![1];
-      wasListItem = true;
+      originalFormat = 'list';
+      originalPrefix = '- ';
     } else if (trimmedLine.match(/^✓\s+(.+)$/)) {
       const match = trimmedLine.match(/^✓\s+(.+)$/);
       completed = true;
       content = match![1];
-      wasListItem = false;
+      originalFormat = 'plain';
+      originalPrefix = '✓ ';
     } else if (trimmedLine.match(/^\[x\]\s+(.+)$/)) {
       const match = trimmedLine.match(/^\[x\]\s+(.+)$/);
       completed = true;
       content = match![1];
-      wasListItem = false;
+      originalFormat = 'plain';
+      originalPrefix = '[x] ';
     } else if (trimmedLine.match(/^\[\s\]\s+(.+)$/)) {
       const match = trimmedLine.match(/^\[\s\]\s+(.+)$/);
       completed = false;
       content = match![1];
-      wasListItem = false;
+      originalFormat = 'plain';
+      originalPrefix = '[ ] ';
     } else {
       // Plain text line
       content = trimmedLine;
       completed = false;
-      wasListItem = false;
+      originalFormat = 'plain';
+      originalPrefix = '';
     }
     
     // Skip if this looks like a non-task line
@@ -191,7 +200,7 @@ export const sortMarkdownByRankings = (markdown: string, rankedTasks: any[]): st
     const rank = rankData ? rankData.rank : 999;
     const score = rankData ? rankData.score : 0;
     
-    taskLines.push({ line: content, rank, score, completed, wasListItem });
+    taskLines.push({ line: content, rank, score, completed, originalFormat, originalPrefix });
   });
   
   // Sort task lines by rank (lower rank = higher priority)
@@ -203,7 +212,7 @@ export const sortMarkdownByRankings = (markdown: string, rankedTasks: any[]): st
     return a.rank - b.rank;
   });
   
-  // Rebuild markdown with sorted tasks
+  // Rebuild markdown with sorted tasks, preserving original format
   const sortedLines: string[] = [];
   
   // Add header comments at the top
@@ -211,14 +220,31 @@ export const sortMarkdownByRankings = (markdown: string, rankedTasks: any[]): st
     .filter(item => item.index < 3) // Keep initial comments
     .forEach(item => sortedLines.push(item.line));
   
-  // Add sorted tasks - convert all to list format for consistency
-  taskLines.forEach(({ line, rank, score, completed }) => {
-    let prefix = '- ';
-    if (completed) {
-      prefix = '- [x] ';
+  // Add sorted tasks - preserve original formatting
+  taskLines.forEach(({ line, rank, score, completed, originalFormat, originalPrefix }) => {
+    let taskLine = '';
+    
+    // Reconstruct the task line with original formatting
+    if (originalFormat === 'checkbox') {
+      // Use checkbox format
+      if (completed) {
+        taskLine = `- [x] ${line}`;
+      } else {
+        taskLine = `- [ ] ${line}`;
+      }
+    } else if (originalFormat === 'list') {
+      // Use list format
+      if (completed) {
+        taskLine = `- ✓ ${line}`;
+      } else {
+        taskLine = `- ${line}`;
+      }
+    } else {
+      // Use plain text format (preserve original prefix if any)
+      taskLine = `${originalPrefix}${line}`;
     }
     
-    let taskLine = `${prefix}${line}`;
+    // Add ranking info if available
     if (rank !== 999 && score !== 0) {
       taskLine += ` | Rank: ${rank} | Score: ${score.toFixed(2)}`;
     }

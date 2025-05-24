@@ -18,7 +18,26 @@ function App() {
     if (savedMarkdown) {
       return savedMarkdown;
     }
-    return '# Welcome to the Todo Sorter App!\n\n# Each task below is a list item - make comparisons to auto-sort them!\n- First task to do\n- Second task to do\n- Another important task\n- Low priority task\n\n# You can mark completed tasks with [x]\n- [x] Example completed task\n\n# Add more tasks as list items (- Task name)';
+    return `# Welcome to the Todo Sorter App!
+
+# Both list items and plain text work - choose your preferred format!
+
+# List format (with dashes):
+- First task to do
+- Second task to do
+- Another important task
+- [x] Example completed task
+
+# Plain text format (no dashes):
+Write the report
+Call the client
+Review the proposal
+Buy groceries
+
+# You can mix and match both formats
+- Meeting with team
+Schedule dentist appointment
+- Low priority task`;
   });
   const [activeTab, setActiveTab] = useState<'editor-compare' | 'log'>('editor-compare');
   const [comparisons, setComparisons] = useState<Comparison[]>([]);
