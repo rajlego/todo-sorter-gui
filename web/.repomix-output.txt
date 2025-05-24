@@ -1,0 +1,2630 @@
+This file is a merged representation of a subset of the codebase, containing specifically included files and files not matching ignore patterns, combined into a single document by Repomix.
+The content has been processed where empty lines have been removed.
+
+<file_summary>
+This section contains a summary of this file.
+
+<purpose>
+This file contains a packed representation of the entire repository's contents.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+</purpose>
+
+<file_format>
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+4. Repository files, each consisting of:
+  - File path as an attribute
+  - Full contents of the file
+</file_format>
+
+<usage_guidelines>
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+</usage_guidelines>
+
+<notes>
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Only files matching these patterns are included: **/*, .cursorrules, .cursor/rules/*, .clinerules, CLAUDE.md
+- Files matching these patterns are excluded: .*.*, **/*.pbxproj, **/node_modules/**, **/dist/**, **/build/**, **/compile/**, **/*.spec.*, **/*.pyc, **/.env, **/.env.*, **/*.env, **/*.env.*, **/*.lock, **/*.lockb, **/package-lock.*, **/pnpm-lock.*, **/*.tsbuildinfo
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Empty lines have been removed from all files
+- Files are sorted by Git change count (files with more changes are at the bottom)
+</notes>
+
+<additional_info>
+
+</additional_info>
+
+</file_summary>
+
+<directory_structure>
+downloads/
+public/
+  vite.svg
+src/
+  assets/
+    react.svg
+  components/
+    ComparisonLog.tsx
+    ComparisonView.tsx
+    Editor.tsx
+    IdManager.tsx
+    TaskRankings.tsx
+    TaskSidebar.tsx
+  hooks/
+  utils/
+    apiClient.ts
+    markdownUtils.ts
+    sortingUtils.ts
+  App.css
+  App.tsx
+  index.css
+  main.tsx
+  vite-env.d.ts
+.gitignore
+Dockerfile
+eslint.config.js
+index.html
+netlify.toml
+nginx.conf
+package.json
+postcss.config.js
+README.md
+tailwind.config.js
+tsconfig.app.json
+tsconfig.json
+tsconfig.node.json
+vite.config.d.ts
+vite.config.ts
+</directory_structure>
+
+<files>
+This section contains the contents of the repository's files.
+
+<file path="public/vite.svg">
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" aria-hidden="true" role="img" class="iconify iconify--logos" width="31.88" height="32" preserveAspectRatio="xMidYMid meet" viewBox="0 0 256 257"><defs><linearGradient id="IconifyId1813088fe1fbc01fb466" x1="-.828%" x2="57.636%" y1="7.652%" y2="78.411%"><stop offset="0%" stop-color="#41D1FF"></stop><stop offset="100%" stop-color="#BD34FE"></stop></linearGradient><linearGradient id="IconifyId1813088fe1fbc01fb467" x1="43.376%" x2="50.316%" y1="2.242%" y2="89.03%"><stop offset="0%" stop-color="#FFEA83"></stop><stop offset="8.333%" stop-color="#FFDD35"></stop><stop offset="100%" stop-color="#FFA800"></stop></linearGradient></defs><path fill="url(#IconifyId1813088fe1fbc01fb466)" d="M255.153 37.938L134.897 252.976c-2.483 4.44-8.862 4.466-11.382.048L.875 37.958c-2.746-4.814 1.371-10.646 6.827-9.67l120.385 21.517a6.537 6.537 0 0 0 2.322-.004l117.867-21.483c5.438-.991 9.574 4.796 6.877 9.62Z"></path><path fill="url(#IconifyId1813088fe1fbc01fb467)" d="M185.432.063L96.44 17.501a3.268 3.268 0 0 0-2.634 3.014l-5.474 92.456a3.268 3.268 0 0 0 3.997 3.378l24.777-5.718c2.318-.535 4.413 1.507 3.936 3.838l-7.361 36.047c-.495 2.426 1.782 4.5 4.151 3.78l15.304-4.649c2.372-.72 4.652 1.36 4.15 3.788l-11.698 56.621c-.732 3.542 3.979 5.473 5.943 2.437l1.313-2.028l72.516-144.72c1.215-2.423-.88-5.186-3.54-4.672l-25.505 4.922c-2.396.462-4.435-1.77-3.759-4.114l16.646-57.705c.677-2.35-1.37-4.583-3.769-4.113Z"></path></svg>
+</file>
+
+<file path="src/assets/react.svg">
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" aria-hidden="true" role="img" class="iconify iconify--logos" width="35.93" height="32" preserveAspectRatio="xMidYMid meet" viewBox="0 0 256 228"><path fill="#00D8FF" d="M210.483 73.824a171.49 171.49 0 0 0-8.24-2.597c.465-1.9.893-3.777 1.273-5.621c6.238-30.281 2.16-54.676-11.769-62.708c-13.355-7.7-35.196.329-57.254 19.526a171.23 171.23 0 0 0-6.375 5.848a155.866 155.866 0 0 0-4.241-3.917C100.759 3.829 77.587-4.822 63.673 3.233C50.33 10.957 46.379 33.89 51.995 62.588a170.974 170.974 0 0 0 1.892 8.48c-3.28.932-6.445 1.924-9.474 2.98C17.309 83.498 0 98.307 0 113.668c0 15.865 18.582 31.778 46.812 41.427a145.52 145.52 0 0 0 6.921 2.165a167.467 167.467 0 0 0-2.01 9.138c-5.354 28.2-1.173 50.591 12.134 58.266c13.744 7.926 36.812-.22 59.273-19.855a145.567 145.567 0 0 0 5.342-4.923a168.064 168.064 0 0 0 6.92 6.314c21.758 18.722 43.246 26.282 56.54 18.586c13.731-7.949 18.194-32.003 12.4-61.268a145.016 145.016 0 0 0-1.535-6.842c1.62-.48 3.21-.974 4.76-1.488c29.348-9.723 48.443-25.443 48.443-41.52c0-15.417-17.868-30.326-45.517-39.844Zm-6.365 70.984c-1.4.463-2.836.91-4.3 1.345c-3.24-10.257-7.612-21.163-12.963-32.432c5.106-11 9.31-21.767 12.459-31.957c2.619.758 5.16 1.557 7.61 2.4c23.69 8.156 38.14 20.213 38.14 29.504c0 9.896-15.606 22.743-40.946 31.14Zm-10.514 20.834c2.562 12.94 2.927 24.64 1.23 33.787c-1.524 8.219-4.59 13.698-8.382 15.893c-8.067 4.67-25.32-1.4-43.927-17.412a156.726 156.726 0 0 1-6.437-5.87c7.214-7.889 14.423-17.06 21.459-27.246c12.376-1.098 24.068-2.894 34.671-5.345a134.17 134.17 0 0 1 1.386 6.193ZM87.276 214.515c-7.882 2.783-14.16 2.863-17.955.675c-8.075-4.657-11.432-22.636-6.853-46.752a156.923 156.923 0 0 1 1.869-8.499c10.486 2.32 22.093 3.988 34.498 4.994c7.084 9.967 14.501 19.128 21.976 27.15a134.668 134.668 0 0 1-4.877 4.492c-9.933 8.682-19.886 14.842-28.658 17.94ZM50.35 144.747c-12.483-4.267-22.792-9.812-29.858-15.863c-6.35-5.437-9.555-10.836-9.555-15.216c0-9.322 13.897-21.212 37.076-29.293c2.813-.98 5.757-1.905 8.812-2.773c3.204 10.42 7.406 21.315 12.477 32.332c-5.137 11.18-9.399 22.249-12.634 32.792a134.718 134.718 0 0 1-6.318-1.979Zm12.378-84.26c-4.811-24.587-1.616-43.134 6.425-47.789c8.564-4.958 27.502 2.111 47.463 19.835a144.318 144.318 0 0 1 3.841 3.545c-7.438 7.987-14.787 17.08-21.808 26.988c-12.04 1.116-23.565 2.908-34.161 5.309a160.342 160.342 0 0 1-1.76-7.887Zm110.427 27.268a347.8 347.8 0 0 0-7.785-12.803c8.168 1.033 15.994 2.404 23.343 4.08c-2.206 7.072-4.956 14.465-8.193 22.045a381.151 381.151 0 0 0-7.365-13.322Zm-45.032-43.861c5.044 5.465 10.096 11.566 15.065 18.186a322.04 322.04 0 0 0-30.257-.006c4.974-6.559 10.069-12.652 15.192-18.18ZM82.802 87.83a323.167 323.167 0 0 0-7.227 13.238c-3.184-7.553-5.909-14.98-8.134-22.152c7.304-1.634 15.093-2.97 23.209-3.984a321.524 321.524 0 0 0-7.848 12.897Zm8.081 65.352c-8.385-.936-16.291-2.203-23.593-3.793c2.26-7.3 5.045-14.885 8.298-22.6a321.187 321.187 0 0 0 7.257 13.246c2.594 4.48 5.28 8.868 8.038 13.147Zm37.542 31.03c-5.184-5.592-10.354-11.779-15.403-18.433c4.902.192 9.899.29 14.978.29c5.218 0 10.376-.117 15.453-.343c-4.985 6.774-10.018 12.97-15.028 18.486Zm52.198-57.817c3.422 7.8 6.306 15.345 8.596 22.52c-7.422 1.694-15.436 3.058-23.88 4.071a382.417 382.417 0 0 0 7.859-13.026a347.403 347.403 0 0 0 7.425-13.565Zm-16.898 8.101a358.557 358.557 0 0 1-12.281 19.815a329.4 329.4 0 0 1-23.444.823c-7.967 0-15.716-.248-23.178-.732a310.202 310.202 0 0 1-12.513-19.846h.001a307.41 307.41 0 0 1-10.923-20.627a310.278 310.278 0 0 1 10.89-20.637l-.001.001a307.318 307.318 0 0 1 12.413-19.761c7.613-.576 15.42-.876 23.31-.876H128c7.926 0 15.743.303 23.354.883a329.357 329.357 0 0 1 12.335 19.695a358.489 358.489 0 0 1 11.036 20.54a329.472 329.472 0 0 1-11 20.722Zm22.56-122.124c8.572 4.944 11.906 24.881 6.52 51.026c-.344 1.668-.73 3.367-1.15 5.09c-10.622-2.452-22.155-4.275-34.23-5.408c-7.034-10.017-14.323-19.124-21.64-27.008a160.789 160.789 0 0 1 5.888-5.4c18.9-16.447 36.564-22.941 44.612-18.3ZM128 90.808c12.625 0 22.86 10.235 22.86 22.86s-10.235 22.86-22.86 22.86s-22.86-10.235-22.86-22.86s10.235-22.86 22.86-22.86Z"></path></svg>
+</file>
+
+<file path="src/components/ComparisonLog.tsx">
+import { useState } from 'react';
+import type { Comparison } from '../utils/markdownUtils';
+interface ComparisonLogProps {
+  comparisons: Comparison[];
+  onExport: () => void;
+}
+const ComparisonLog: React.FC<ComparisonLogProps> = ({ comparisons, onExport }) => {
+  const [selectedComparison, setSelectedComparison] = useState<Comparison | null>(null);
+  return (
+    <div className="rounded-lg">
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">
+          Comparison History
+          <span className="ml-2 text-sm font-normal text-gray-500 dark:text-gray-400">
+            ({comparisons.length} total)
+          </span>
+        </h2>
+        <button
+          onClick={onExport}
+          className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-700 dark:hover:bg-indigo-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          disabled={comparisons.length === 0}
+        >
+          <svg className="mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+          </svg>
+          Export CSV
+        </button>
+      </div>
+      {comparisons.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-12 text-center">
+          <div className="w-16 h-16 mb-4 text-gray-300 dark:text-gray-600">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+          </div>
+          <h3 className="mb-1 text-lg font-medium text-gray-700 dark:text-gray-300">No comparisons yet</h3>
+          <p className="text-gray-500 dark:text-gray-400 max-w-sm">
+            Compare tasks to see your comparison history. This helps track how you prioritized tasks over time.
+          </p>
+        </div>
+      ) : (
+        <div className="overflow-x-auto -mx-4 sm:-mx-0">
+          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+            <thead className="bg-gray-50 dark:bg-gray-800/50">
+              <tr>
+                <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  Date
+                </th>
+                <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  Task A
+                </th>
+                <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  Task B
+                </th>
+                <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  Winner
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+              {comparisons.map((comparison) => (
+                <tr 
+                  key={comparison.id} 
+                  onClick={() => setSelectedComparison(comparison)}
+                  className={`hover:bg-gray-50 dark:hover:bg-gray-750 cursor-pointer transition-colors ${
+                    selectedComparison?.id === comparison.id ? 'bg-indigo-50 dark:bg-indigo-900/20' : ''
+                  }`}
+                >
+                  <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                    {comparison.timestamp.toLocaleString(undefined, { 
+                      month: 'short', 
+                      day: 'numeric', 
+                      hour: '2-digit', 
+                      minute: '2-digit'
+                    })}
+                  </td>
+                  <td className={`px-4 py-3 text-sm ${
+                    comparison.winner.id === comparison.taskA.id 
+                      ? 'font-medium text-indigo-600 dark:text-indigo-400' 
+                      : 'text-gray-700 dark:text-gray-300'
+                  }`}>
+                    {comparison.taskA.content}
+                  </td>
+                  <td className={`px-4 py-3 text-sm ${
+                    comparison.winner.id === comparison.taskB.id 
+                      ? 'font-medium text-indigo-600 dark:text-indigo-400' 
+                      : 'text-gray-700 dark:text-gray-300'
+                  }`}>
+                    {comparison.taskB.content}
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap text-sm">
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
+                      {comparison.winner.content}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+};
+export default ComparisonLog;
+</file>
+
+<file path="src/components/ComparisonView.tsx">
+import React, { useState, useEffect } from 'react';
+import type { Task, Comparison } from '../utils/markdownUtils';
+interface ComparisonViewProps {
+  tasks: Task[];
+  comparisons?: Comparison[];
+  onComparisonComplete: (taskA: Task, taskB: Task, winner: Task) => void;
+}
+const ComparisonView: React.FC<ComparisonViewProps> = ({ tasks, comparisons = [], onComparisonComplete }) => {
+  const [currentPair, setCurrentPair] = useState<[Task, Task] | null>(null);
+  const [remainingPairs, setRemainingPairs] = useState<[Task, Task][]>([]);
+  const [comparisonsCount, setComparisonsCount] = useState(0);
+  // Generate all possible pairs of tasks and filter out already compared pairs
+  useEffect(() => {
+    if (tasks.length < 2) return;
+    // Generate all possible pairs
+    const allPairs: [Task, Task][] = [];
+    for (let i = 0; i < tasks.length; i++) {
+      for (let j = i + 1; j < tasks.length; j++) {
+        allPairs.push([tasks[i], tasks[j]]);
+      }
+    }
+    // Filter out pairs that have already been compared
+    // We need to check both A->B and B->A combinations since comparison order matters
+    const comparedPairs = new Set<string>();
+    comparisons.forEach(comparison => {
+      // Create normalized pair keys (always put smaller content first for consistency)
+      const contents = [comparison.taskA.content, comparison.taskB.content].sort();
+      comparedPairs.add(contents.join('|||'));
+    });
+    const uncomparedPairs = allPairs.filter(([taskA, taskB]) => {
+      const contents = [taskA.content, taskB.content].sort();
+      const pairKey = contents.join('|||');
+      return !comparedPairs.has(pairKey);
+    });
+    // Shuffle the remaining pairs
+    const shuffledPairs = [...uncomparedPairs].sort(() => Math.random() - 0.5);
+    setRemainingPairs(shuffledPairs);
+    // Set the first pair
+    if (shuffledPairs.length > 0) {
+      setCurrentPair(shuffledPairs[0]);
+    } else {
+      setCurrentPair(null);
+    }
+  }, [tasks, comparisons]);
+  // Select the next pair after a comparison
+  const getNextPair = () => {
+    if (remainingPairs.length <= 1) {
+      setCurrentPair(null);
+      return;
+    }
+    const newRemainingPairs = [...remainingPairs];
+    newRemainingPairs.shift(); // Remove the current pair
+    setRemainingPairs(newRemainingPairs);
+    setCurrentPair(newRemainingPairs[0]);
+  };
+  // Handle task selection
+  const handleTaskSelect = (winner: Task) => {
+    if (!currentPair) return;
+    const [taskA, taskB] = currentPair;
+    onComparisonComplete(taskA, taskB, winner);
+    setComparisonsCount(prev => prev + 1);
+    getNextPair();
+  };
+  // Handle keyboard shortcuts (1 and 2)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!currentPair) return;
+      if (e.key === '1') {
+        handleTaskSelect(currentPair[0]);
+      } else if (e.key === '2') {
+        handleTaskSelect(currentPair[1]);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [currentPair]);
+  if (tasks.length < 2) {
+    return (
+      <div className="flex flex-col items-center justify-center p-8 text-center">
+        <div className="w-16 h-16 mb-4 text-gray-300 dark:text-gray-600">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+        </div>
+        <h2 className="text-xl font-bold mb-2 text-gray-700 dark:text-gray-300">Add Tasks to Compare</h2>
+        <p className="text-gray-500 dark:text-gray-400 max-w-sm">
+          Add at least 2 tasks in the markdown editor to begin prioritizing them.
+        </p>
+      </div>
+    );
+  }
+  if (!currentPair) {
+    return (
+      <div className="flex flex-col items-center justify-center p-8 text-center">
+        <div className="w-16 h-16 mb-4 text-emerald-500 dark:text-emerald-400">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </div>
+        <h2 className="text-xl font-bold mb-2 text-gray-700 dark:text-gray-300">Comparison Complete!</h2>
+        <p className="text-gray-600 dark:text-gray-400">
+          You've completed {comparisonsCount} comparisons.
+        </p>
+        {comparisonsCount > 0 && (
+          <p className="mt-4 text-sm text-gray-500 dark:text-gray-400">
+            Check the Task Rankings section to see the results.
+          </p>
+        )}
+      </div>
+    );
+  }
+  return (
+    <div className="w-full">
+      <div className="text-center mb-6">
+        <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-2">Which task is more important?</h2>
+        <p className="text-sm text-gray-500 dark:text-gray-400">
+          Press <kbd className="px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded text-xs">1</kbd> for the first task, 
+          <kbd className="px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded text-xs ml-1">2</kbd> for the second, or click on a task.
+        </p>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+        <div 
+          onClick={() => handleTaskSelect(currentPair[0])}
+          className="relative rounded-xl overflow-hidden border border-indigo-100 dark:border-indigo-900 group cursor-pointer"
+        >
+          <div className="absolute inset-0 bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-indigo-900/40 dark:to-blue-900/40 opacity-50 group-hover:opacity-100 transition-opacity"></div>
+          <div className="relative p-6">
+            <div className="flex items-center mb-3">
+              <span className="flex-shrink-0 w-8 h-8 bg-indigo-100 dark:bg-indigo-900/50 rounded-full flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-medium">1</span>
+              <h3 className="ml-3 font-medium text-gray-900 dark:text-gray-100">Task A</h3>
+            </div>
+            <div className="text-gray-700 dark:text-gray-300 break-words">{currentPair[0].content}</div>
+            <div className="absolute bottom-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
+              <span className="flex items-center justify-center w-8 h-8 bg-indigo-500 dark:bg-indigo-600 rounded-full text-white">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                </svg>
+              </span>
+            </div>
+          </div>
+        </div>
+        <div 
+          onClick={() => handleTaskSelect(currentPair[1])}
+          className="relative rounded-xl overflow-hidden border border-emerald-100 dark:border-emerald-900 group cursor-pointer"
+        >
+          <div className="absolute inset-0 bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-900/40 dark:to-teal-900/40 opacity-50 group-hover:opacity-100 transition-opacity"></div>
+          <div className="relative p-6">
+            <div className="flex items-center mb-3">
+              <span className="flex-shrink-0 w-8 h-8 bg-emerald-100 dark:bg-emerald-900/50 rounded-full flex items-center justify-center text-emerald-600 dark:text-emerald-400 font-medium">2</span>
+              <h3 className="ml-3 font-medium text-gray-900 dark:text-gray-100">Task B</h3>
+            </div>
+            <div className="text-gray-700 dark:text-gray-300 break-words">{currentPair[1].content}</div>
+            <div className="absolute bottom-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
+              <span className="flex items-center justify-center w-8 h-8 bg-emerald-500 dark:bg-emerald-600 rounded-full text-white">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                </svg>
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div className="text-center text-sm text-gray-500 dark:text-gray-400">
+        <span className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200">
+          {remainingPairs.length} comparisons remaining
+        </span>
+      </div>
+    </div>
+  );
+};
+export default ComparisonView;
+</file>
+
+<file path="src/components/Editor.tsx">
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
+import CodeMirror from '@uiw/react-codemirror';
+import { markdown } from '@codemirror/lang-markdown';
+import { gutter, GutterMarker } from '@codemirror/view';
+import { RangeSetBuilder } from '@codemirror/state';
+interface EditorProps {
+  value: string;
+  onChange: (value: string) => void;
+}
+// Create action button gutter markers
+class ActionButtonMarker extends GutterMarker {
+  constructor(
+    private lineIndex: number, 
+    private hasRanking: boolean, 
+    private onDelete: (lineIndex: number) => void,
+    private onClearScore: (lineIndex: number) => void
+  ) {
+    super();
+  }
+  toDOM() {
+    const container = document.createElement('div');
+    container.className = 'flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity';
+    container.style.cssText = 'display: flex; align-items: center; gap: 2px; opacity: 0; transition: opacity 0.2s;';
+    // Delete button
+    const deleteBtn = document.createElement('button');
+    deleteBtn.innerHTML = `
+      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+      </svg>
+    `;
+    deleteBtn.className = 'p-1 rounded text-red-500 hover:bg-red-50 transition-colors';
+    deleteBtn.style.cssText = 'padding: 2px; border-radius: 2px; color: #ef4444; background: none; border: none; cursor: pointer; display: flex; align-items: center;';
+    deleteBtn.title = 'Delete line';
+    deleteBtn.onclick = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      this.onDelete(this.lineIndex);
+    };
+    container.appendChild(deleteBtn);
+    // Clear score button (only if line has ranking)
+    if (this.hasRanking) {
+      const clearBtn = document.createElement('button');
+      clearBtn.innerHTML = `
+        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2M3 12l6.414 6.414a2 2 0 002.828 0L18 12M3 12l6.414-6.414a2 2 0 012.828 0L18 12" />
+        </svg>
+      `;
+      clearBtn.className = 'p-1 rounded text-orange-500 hover:bg-orange-50 transition-colors';
+      clearBtn.style.cssText = 'padding: 2px; border-radius: 2px; color: #f97316; background: none; border: none; cursor: pointer; display: flex; align-items: center;';
+      clearBtn.title = 'Clear score';
+      clearBtn.onclick = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.onClearScore(this.lineIndex);
+      };
+      container.appendChild(clearBtn);
+    }
+    return container;
+  }
+}
+const Editor: React.FC<EditorProps> = ({ value, onChange }) => {
+  const [isDarkMode, setIsDarkMode] = useState(false);
+  // Detect system dark mode preference
+  useEffect(() => {
+    const darkModeQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    setIsDarkMode(darkModeQuery.matches);
+    const handleChange = (e: MediaQueryListEvent) => {
+      setIsDarkMode(e.matches);
+    };
+    darkModeQuery.addEventListener('change', handleChange);
+    return () => darkModeQuery.removeEventListener('change', handleChange);
+  }, []);
+  // Handle deleting a line
+  const handleDeleteLine = useCallback((lineIndex: number) => {
+    const newLines = value.split('\n').filter((_, index) => index !== lineIndex);
+    onChange(newLines.join('\n'));
+  }, [value, onChange]);
+  // Handle clearing score from a line
+  const handleClearScore = useCallback((lineIndex: number) => {
+    const currentLines = value.split('\n');
+    const line = currentLines[lineIndex];
+    // Remove ranking info if present
+    const rankingMatch = line.match(/^(.+?)\s+\|\s+Rank:\s+\d+\s+\|\s+Score:\s+[-\d.]+$/);
+    if (rankingMatch) {
+      currentLines[lineIndex] = rankingMatch[1];
+      onChange(currentLines.join('\n'));
+    }
+  }, [value, onChange]);
+  // Create action gutter extension
+  const actionGutter = useMemo(() => {
+    return gutter({
+      class: 'cm-action-gutter',
+      markers: (view) => {
+        const builder = new RangeSetBuilder<GutterMarker>();
+        const lines = value.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i].trim();
+          // Skip empty lines and comments
+          if (!line || line.startsWith('#')) continue;
+          // Check if line has ranking info
+          const hasRanking = /\|\s+Rank:\s+\d+\s+\|\s+Score:\s+[-\d.]+$/.test(line);
+          const lineStart = view.state.doc.line(i + 1).from;
+          builder.add(
+            lineStart,
+            lineStart,
+            new ActionButtonMarker(i, hasRanking, handleDeleteLine, handleClearScore)
+          );
+        }
+        return builder.finish();
+      },
+      lineMarker: () => null,
+      widgetMarker: () => null,
+    });
+  }, [value, handleDeleteLine, handleClearScore]);
+  // Memoized extensions including the action gutter
+  const extensions = useMemo(() => [
+    markdown(),
+    actionGutter
+  ], [actionGutter]);
+  // Add custom CSS for the gutter
+  useEffect(() => {
+    const style = document.createElement('style');
+    style.textContent = `
+      .cm-action-gutter {
+        min-width: 60px !important;
+        padding-left: 4px !important;
+        padding-right: 4px !important;
+      }
+      .cm-line:hover .cm-action-gutter > div {
+        opacity: 1 !important;
+      }
+      .cm-editor .cm-gutter.cm-action-gutter {
+        background: var(--gutter-bg, #f8fafc);
+        border-right: 1px solid var(--gutter-border, #e2e8f0);
+      }
+      .cm-editor.cm-dark .cm-gutter.cm-action-gutter {
+        background: var(--gutter-bg-dark, #1e293b);
+        border-right: 1px solid var(--gutter-border-dark, #374151);
+      }
+    `;
+    document.head.appendChild(style);
+    return () => {
+      document.head.removeChild(style);
+    };
+  }, []);
+  return (
+    <div className="h-full w-full font-mono rounded-b-lg overflow-hidden">
+      <CodeMirror
+        value={value}
+        onChange={onChange}
+        extensions={extensions}
+        theme={isDarkMode ? 'dark' : 'light'}
+        height="100%"
+        basicSetup={{
+          lineNumbers: true,
+          foldGutter: true,
+          dropCursor: false,
+          allowMultipleSelections: false,
+        }}
+        className="h-full"
+      />
+    </div>
+  );
+};
+export default React.memo(Editor);
+</file>
+
+<file path="src/components/IdManager.tsx">
+import React, { useState, useEffect } from 'react';
+interface IdManagerProps {
+  listId: string;
+  onListIdChange: (id: string) => void;
+}
+function generateRandomId(): string {
+  // Generate a random 24-character ID
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  let result = '';
+  for (let i = 0; i < 24; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result;
+}
+const IdManager: React.FC<IdManagerProps> = ({ listId, onListIdChange }) => {
+  const [isEditing, setIsEditing] = useState(false);
+  const [inputValue, setInputValue] = useState(listId);
+  useEffect(() => {
+    setInputValue(listId);
+  }, [listId]);
+  const handleSave = () => {
+    if (inputValue.trim().length >= 8) {
+      onListIdChange(inputValue.trim());
+      setIsEditing(false);
+    } else {
+      alert('ID must be at least 8 characters long for security');
+    }
+  };
+  const handleGenerateNew = () => {
+    const newId = generateRandomId();
+    setInputValue(newId);
+    onListIdChange(newId);
+    setIsEditing(false);
+  };
+  const handleCancel = () => {
+    setInputValue(listId);
+    setIsEditing(false);
+  };
+  return (
+    <div className="bg-white border rounded-lg p-4 mb-4">
+      <div className="flex items-center justify-between mb-2">
+        <h3 className="text-lg font-semibold text-gray-800">Your Todo List ID</h3>
+        <div className="flex gap-2">
+          {!isEditing ? (
+            <>
+              <button
+                onClick={() => setIsEditing(true)}
+                className="px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600"
+              >
+                Edit
+              </button>
+              <button
+                onClick={handleGenerateNew}
+                className="px-3 py-1 text-sm bg-green-500 text-white rounded hover:bg-green-600"
+              >
+                Generate New
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                onClick={handleSave}
+                disabled={inputValue.trim().length < 8}
+                className="px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-400"
+              >
+                Save
+              </button>
+              <button
+                onClick={handleCancel}
+                className="px-3 py-1 text-sm bg-gray-500 text-white rounded hover:bg-gray-600"
+              >
+                Cancel
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+      {!isEditing ? (
+        <div className="font-mono text-sm bg-gray-100 p-2 rounded border break-all">
+          {listId || 'No ID set'}
+        </div>
+      ) : (
+        <div>
+          <input
+            type="text"
+            value={inputValue}
+            onChange={(e) => setInputValue(e.target.value)}
+            placeholder="Enter your list ID (minimum 8 characters)"
+            className="w-full font-mono text-sm p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          <div className="text-xs text-gray-600 mt-1">
+            Make your ID long and unique to prevent others from guessing it. 
+            {inputValue.length < 8 && (
+              <span className="text-red-600 font-semibold"> Need at least 8 characters.</span>
+            )}
+          </div>
+        </div>
+      )}
+      <div className="text-xs text-gray-600 mt-2">
+        <p><strong>Important:</strong> This ID gives access to your tasks and comparisons. Keep it private!</p>
+        <p>Share this ID only with people you want to collaborate with on this todo list.</p>
+      </div>
+    </div>
+  );
+};
+export default IdManager;
+</file>
+
+<file path="src/components/TaskRankings.tsx">
+import React, { useEffect, useState } from 'react';
+import type { Task, Comparison } from '../utils/markdownUtils';
+import { rankingsApi } from '../utils/apiClient';
+import type { RankedTask } from '../utils/apiClient';
+interface TaskRankingsProps {
+  tasks: Task[];
+  comparisons: Comparison[];
+  listId: string;
+}
+const TaskRankings: React.FC<TaskRankingsProps> = ({ tasks, comparisons, listId }) => {
+  const [rankedTasks, setRankedTasks] = useState<RankedTask[]>([]);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
+  // Fetch rankings from the API when tasks or comparisons change
+  useEffect(() => {
+    const fetchRankings = async () => {
+      // If no tasks, reset rankings and return
+      if (tasks.length === 0) {
+        setRankedTasks([]);
+        return;
+      }
+      setLoading(true);
+      setError(null);
+      try {
+        // If we have comparisons, fetch from API
+        if (comparisons.length > 0) {
+          const rankings = await rankingsApi.getRankings(listId);
+          // Get all current task contents
+          const taskContents = tasks.map(task => task.content);
+          // Filter API rankings to only include tasks that exist in the editor
+          const apiRankedTasks = rankings.filter(rankedTask => 
+            taskContents.includes(rankedTask.content)
+          );
+          // Find tasks that don't have API rankings yet
+          const rankedTaskContents = apiRankedTasks.map(task => task.content);
+          const unrankedTasks = tasks.filter(task => 
+            !rankedTaskContents.includes(task.content)
+          );
+          // Create default rankings for unranked tasks (score 0)
+          const defaultRankedTasks = unrankedTasks.map(task => ({
+            id: task.id,
+            content: task.content,
+            completed: task.completed,
+            line: task.line,
+            score: 0,
+            rank: 0 // Will be reassigned below
+          }));
+          // Combine API rankings with default rankings
+          const allTasks = [...apiRankedTasks, ...defaultRankedTasks];
+          // Sort all tasks by score descending and reassign ranks
+          const rerankedTasks = allTasks
+            .sort((a, b) => a.score > b.score ? -1 : 1) // Sort by score descending
+            .map((task, idx) => ({
+              ...task,
+              rank: idx + 1 // Re-assign ranks (1-based)
+            }));
+          setRankedTasks(rerankedTasks);
+        } else {
+          // If no comparisons yet, show tasks with default ranks and scores
+          const defaultRankedTasks = tasks.map((task, index) => ({
+            id: task.id,
+            content: task.content,
+            completed: task.completed,
+            line: task.line,
+            score: 0,
+            rank: index + 1
+          }));
+          setRankedTasks(defaultRankedTasks);
+        }
+      } catch (err) {
+        console.error('Failed to fetch rankings:', err);
+        setError('Failed to fetch rankings. Using local sorting as fallback.');
+        // Fallback to our local calculation if the API call fails
+        const localRankedTasks = tasks.map((task, index) => ({
+          id: task.id,
+          content: task.content,
+          completed: task.completed,
+          line: task.line,
+          score: 0,
+          rank: index + 1
+        }));
+        setRankedTasks(localRankedTasks);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchRankings();
+  }, [tasks, comparisons, listId]);
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center p-8">
+        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-indigo-500 dark:border-indigo-400"></div>
+        <span className="ml-3 text-gray-600 dark:text-gray-400">Loading rankings...</span>
+      </div>
+    );
+  }
+  // Show error state with fallback ranking
+  if (error) {
+    return (
+      <div className="p-6 rounded-lg bg-red-50 dark:bg-red-900/20 text-center">
+        <svg className="mx-auto h-10 w-10 text-red-500 dark:text-red-400 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+        </svg>
+        <h3 className="text-lg font-medium text-red-800 dark:text-red-300 mb-2">Failed to load rankings</h3>
+        <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+        {rankedTasks.length > 0 && (
+          <div className="mt-6 overflow-y-auto max-h-[400px]">
+            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+              <thead className="bg-gray-50 dark:bg-gray-800/50">
+                <tr>
+                  <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    Rank
+                  </th>
+                  <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    Task
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                {rankedTasks.map((task) => (
+                  <tr key={task.id} className="hover:bg-gray-50 dark:hover:bg-gray-750">
+                    <td className="px-3 py-3 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">
+                      {task.rank}
+                    </td>
+                    <td className="px-3 py-3 text-sm text-gray-900 dark:text-gray-100">
+                      <span className={task.completed ? 'line-through text-gray-500 dark:text-gray-500' : ''}>
+                        {task.content}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    );
+  }
+  // Show empty state when no tasks or comparisons
+  if (tasks.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-8 text-center">
+        <div className="w-16 h-16 mb-4 text-gray-300 dark:text-gray-600">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+          </svg>
+        </div>
+        <h3 className="text-lg font-medium text-gray-700 dark:text-gray-300 mb-1">No Tasks Yet</h3>
+        <p className="text-gray-500 dark:text-gray-400 max-w-sm">
+          Add tasks in the editor to start ranking them.
+        </p>
+      </div>
+    );
+  }
+  // Show rankings (now handles both with and without comparisons)
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-lg font-medium text-gray-800 dark:text-gray-200">Rankings</h3>
+        {comparisons.length === 0 ? (
+          <div className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-2 py-1 rounded">
+            No comparisons yet - make comparisons to improve rankings
+          </div>
+        ) : (
+          <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+            <div className="flex items-center">
+              <span className="inline-block w-3 h-3 rounded-full bg-emerald-400 dark:bg-emerald-500 mr-1"></span>
+              <span>High</span>
+            </div>
+            <div className="flex items-center">
+              <span className="inline-block w-3 h-3 rounded-full bg-amber-400 dark:bg-amber-500 mr-1"></span>
+              <span>Medium</span>
+            </div>
+            <div className="flex items-center">
+              <span className="inline-block w-3 h-3 rounded-full bg-red-400 dark:bg-red-500 mr-1"></span>
+              <span>Low</span>
+            </div>
+          </div>
+        )}
+      </div>
+      <div className="overflow-y-auto max-h-[400px] -mr-4 pr-4">
+        <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+          <thead className="bg-gray-50 dark:bg-gray-800/50 sticky top-0 z-10">
+            <tr>
+              <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-16">
+                Rank
+              </th>
+              <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                Task
+              </th>
+              <th scope="col" className="px-3 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-24">
+                Score
+              </th>
+            </tr>
+          </thead>
+          <tbody className="bg-white dark:bg-transparent divide-y divide-gray-200 dark:divide-gray-700">
+            {rankedTasks.map((task) => {
+              // Determine score color based on relative position
+              const scoreColorClass = 
+                task.rank <= Math.ceil(rankedTasks.length / 3)
+                  ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400'
+                  : task.rank <= Math.ceil(rankedTasks.length * 2 / 3)
+                    ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400'
+                    : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400';
+              return (
+                <tr key={task.id} className="hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors">
+                  <td className="px-3 py-3 whitespace-nowrap">
+                    <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 font-medium text-sm">
+                      {task.rank}
+                    </div>
+                  </td>
+                  <td className="px-3 py-3 text-sm text-gray-900 dark:text-gray-100">
+                    <span className={task.completed ? 'line-through text-gray-500 dark:text-gray-500' : ''}>
+                      {task.content}
+                    </span>
+                  </td>
+                  <td className="px-3 py-3 whitespace-nowrap text-right">
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${scoreColorClass}`}>
+                      {task.score.toFixed(2)}
+                    </span>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+};
+export default TaskRankings;
+</file>
+
+<file path="src/components/TaskSidebar.tsx">
+import React, { useMemo } from 'react';
+import { extractTasks } from '../utils/markdownUtils';
+import type { Task } from '../utils/markdownUtils';
+interface TaskSidebarProps {
+  markdown: string;
+}
+const TaskSidebar: React.FC<TaskSidebarProps> = ({ markdown }) => {
+  // Memoize task extraction to avoid recalculating on every render
+  const tasks = useMemo(() => extractTasks(markdown), [markdown]);
+  return (
+    <div>
+      {tasks.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-10 px-4 text-center">
+          <div className="w-12 h-12 mb-4 text-gray-300 dark:text-gray-600">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+            </svg>
+          </div>
+          <p className="text-gray-500 dark:text-gray-400">
+            No tasks found. Add tasks by typing each task on a new line. Use <code className="text-xs bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded"># Comment</code> for comments.
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {tasks.map((task, index) => (
+            <div 
+              key={`task-${index}-${task.content}`} 
+              className="flex items-start space-x-3 p-2 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-100 dark:border-gray-700"
+            >
+              <div className="flex-shrink-0 mt-0.5">
+                {task.completed ? (
+                  <div className="w-4 h-4 bg-green-500 rounded border-2 border-green-500 flex items-center justify-center">
+                    <svg className="w-2 h-2 text-white" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                ) : (
+                  <div className="w-4 h-4 border-2 border-gray-300 dark:border-gray-600 rounded"></div>
+                )}
+              </div>
+              <div className="flex-grow min-w-0">
+                <p className={`text-sm break-words ${
+                  task.completed 
+                    ? 'text-gray-500 dark:text-gray-400 line-through' 
+                    : 'text-gray-700 dark:text-gray-300'
+                }`}>
+                  {task.content}
+                </p>
+                <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                  Line {task.line + 1} • {task.completed ? 'Completed' : 'Pending'}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+export default React.memo(TaskSidebar);
+</file>
+
+<file path="src/utils/apiClient.ts">
+import axios from 'axios';
+import type { Task, Comparison } from './markdownUtils';
+// Define API base URL based on environment
+// For monolithic deployment, API is at /api path with no full URL needed
+const API_BASE_URL = 
+  // In dev mode (localhost) use the local API with specific port
+  window.location.hostname === 'localhost' 
+    ? 'http://localhost:3000/api' 
+    // In production, API is at /api path on the same origin
+    : '/api';
+console.log('Using API URL:', API_BASE_URL);
+// API client instance
+const apiClient = axios.create({
+  baseURL: API_BASE_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+// API logging utility
+const logApiOperation = (operation: string, data?: any, error?: any) => {
+  const timestamp = new Date().toISOString();
+  if (error) {
+    console.error(`[${timestamp}] API ${operation} failed:`, error);
+    if (error.response) {
+      console.error(`[${timestamp}] Response:`, {
+        status: error.response.status,
+        data: error.response.data
+      });
+    }
+  } else {
+    console.log(`[${timestamp}] API ${operation} successful`, data || '');
+  }
+};
+// Interface for ranked tasks from the backend
+export interface RankedTask extends Task {
+  score: number;
+  rank: number;
+}
+// Interface for task response from updated API
+interface TaskResponse {
+  content: string;
+  completed: boolean;
+}
+// API endpoints for comparisons
+export const comparisonsApi = {
+  // Get all comparisons
+  getAllComparisons: async (listId: string): Promise<Comparison[]> => {
+    try {
+      const response = await apiClient.post('/comparisons/content', { list_id: listId });
+      const comparisons = response.data.comparisons.map((comp: any) => ({
+        id: generateId(),
+        taskA: { id: generateId(), content: comp.task_a_content, completed: false, line: 0 },
+        taskB: { id: generateId(), content: comp.task_b_content, completed: false, line: 0 },
+        winner: { id: generateId(), content: comp.winner_content, completed: false, line: 0 },
+        timestamp: new Date(comp.timestamp)
+      }));
+      logApiOperation('getAllComparisons', { count: comparisons.length, listId });
+      return comparisons;
+    } catch (error) {
+      logApiOperation('getAllComparisons', undefined, error);
+      throw error;
+    }
+  },
+  // Add a new comparison using task content
+  addComparison: async (comparison: Omit<Comparison, 'id' | 'timestamp'>, listId: string): Promise<Comparison> => {
+    try {
+      const payload = {
+        task_a_content: comparison.taskA.content,
+        task_b_content: comparison.taskB.content,
+        winner_content: comparison.winner.content,
+        list_id: listId
+      };
+      logApiOperation('addComparison - request', payload);
+      // Validate that we have content for all tasks
+      if (!comparison.taskA.content || !comparison.taskB.content || !comparison.winner.content) {
+        throw new Error('Task content cannot be empty');
+      }
+      // Make sure winner is one of the tasks being compared
+      if (comparison.winner.content !== comparison.taskA.content && 
+          comparison.winner.content !== comparison.taskB.content) {
+        throw new Error(`Winner content must match either task A or task B`);
+      }
+      // Send the comparison to the API
+      try {
+        const response = await apiClient.post('/comparisons/add', payload);
+        logApiOperation('addComparison - response', response.data);
+      } catch (err: any) {
+        logApiOperation('addComparison', payload, err);
+        throw err;
+      }
+      return {
+        id: generateId(),
+        taskA: comparison.taskA,
+        taskB: comparison.taskB,
+        winner: comparison.winner,
+        timestamp: new Date()
+      };
+    } catch (error) {
+      logApiOperation('addComparison - error', undefined, error);
+      throw error;
+    }
+  },
+};
+// API endpoint for rankings
+export const rankingsApi = {
+  // Get task rankings
+  getRankings: async (listId: string): Promise<RankedTask[]> => {
+    logApiOperation('getRankings - starting', { listId });
+    try {
+      const response = await apiClient.post('/rankings', { list_id: listId });
+      logApiOperation('getRankings - received', response.data);
+      if (!response.data.rankings || !Array.isArray(response.data.rankings)) {
+        logApiOperation('getRankings - invalid format', response.data);
+        return [];
+      }
+      // Process content-based rankings
+      const rankings = response.data.rankings.map((task: any, index: number) => {
+        return {
+          id: `task-${index + 1}`, // Generate a synthetic ID for frontend use
+          content: task.content || '',
+          completed: false, // We don't track this in the API anymore
+          line: 0, // We don't track this in the API anymore
+          score: typeof task.score === 'number' ? task.score : 0,
+          rank: typeof task.rank === 'number' ? task.rank : 0
+        };
+      });
+      logApiOperation('getRankings - processed', { count: rankings.length, listId });
+      return rankings;
+    } catch (error) {
+      logApiOperation('getRankings', undefined, error);
+      throw error;
+    }
+  },
+};
+// Health check response type
+interface HealthCheckResponse {
+  status: string;
+  db_connected: boolean;
+  memory_mode: boolean;
+}
+// Health check endpoint
+export const healthCheck = async (): Promise<boolean> => {
+  try {
+    const response = await apiClient.get('/health');
+    logApiOperation('healthCheck - received', response.data);
+    // Check if it's the new response format with db_connected
+    if (response.data && typeof response.data === 'object') {
+      const healthData = response.data as HealthCheckResponse;
+      // If we get a specific memory_mode flag, check if we're using a real database connection
+      if ('db_connected' in healthData) {
+        return healthData.db_connected === true && healthData.memory_mode === false;
+      }
+    }
+    // Fallback for old response format
+    return response.status === 200;
+  } catch (error) {
+    console.error('API health check failed:', error);
+    logApiOperation('healthCheck - failed', undefined, error);
+    return false;
+  }
+};
+// Helper function to generate a unique ID
+const generateId = (): string => {
+  return Math.random().toString(36).substring(2, 15) + 
+    Math.random().toString(36).substring(2, 15);
+};
+// Tasks API for managing tasks directly
+export const tasksApi = {
+  // Get all tasks
+  getAllTasks: async (listId: string): Promise<string[]> => {
+    logApiOperation('getAllTasks - starting', { listId });
+    try {
+      const response = await apiClient.post('/tasks', { list_id: listId });
+      logApiOperation('getAllTasks - received', response.data);
+      // The updated API now returns an array of task objects with content and completed properties
+      if (Array.isArray(response.data)) {
+        const tasks = response.data.map((task: TaskResponse) => task.content);
+        return tasks;
+      }
+      // Fallback for backward compatibility
+      return response.data.tasks || [];
+    } catch (error) {
+      logApiOperation('getAllTasks', undefined, error);
+      throw error;
+    }
+  },
+  // Delete a task by content
+  deleteTask: async (content: string, listId: string): Promise<boolean> => {
+    logApiOperation('deleteTask - starting', { content, listId });
+    try {
+      const response = await apiClient.post('/tasks/delete', { 
+        content,
+        list_id: listId
+      });
+      logApiOperation('deleteTask - received', response.data);
+      return true;
+    } catch (error) {
+      logApiOperation('deleteTask', { content, listId }, error);
+      throw error;
+    }
+  },
+  // Register a new task
+  registerTask: async (content: string, listId: string): Promise<boolean> => {
+    logApiOperation('registerTask - starting', { content, listId });
+    try {
+      // To register a task, we create a dummy comparison where taskA and taskB are both the new task
+      // and the winner is also the new task
+      const payload = {
+        task_a_content: content,
+        task_b_content: content,
+        winner_content: content,
+        list_id: listId
+      };
+      const response = await apiClient.post('/comparisons/add', payload);
+      logApiOperation('registerTask - received', response.data);
+      return true;
+    } catch (error) {
+      logApiOperation('registerTask', { content, listId }, error);
+      throw error;
+    }
+  }
+};
+</file>
+
+<file path="src/utils/markdownUtils.ts">
+export interface Task {
+  id: string;
+  content: string;
+  completed: boolean;
+  line: number; // Line number in the markdown file
+  rank?: number; // Optional rank from backend
+  score?: number; // Optional score from backend
+}
+export interface Comparison {
+  id: string;
+  taskA: Task;
+  taskB: Task;
+  winner: Task;
+  timestamp: Date;
+}
+/**
+ * Extract tasks from markdown content
+ * New format: Each line is a task unless it starts with # (comment)
+ * Completed tasks can start with ✓ or [x]
+ * @param markdown Markdown content
+ * @returns Array of Task objects
+ */
+export const extractTasks = (markdown: string): Task[] => {
+  console.log('Extracting tasks from markdown...');
+  const tasks: Task[] = [];
+  const lines = markdown.split('\n');
+  lines.forEach((line, index) => {
+    // Skip empty lines and comments (lines starting with #)
+    const trimmedLine = line.trim();
+    if (!trimmedLine || trimmedLine.startsWith('#')) {
+      return;
+    }
+    let content = trimmedLine;
+    let completed = false;
+    // Check for completion markers
+    if (trimmedLine.startsWith('✓ ')) {
+      completed = true;
+      content = trimmedLine.substring(2).trim();
+    } else if (trimmedLine.startsWith('[x] ')) {
+      completed = true;
+      content = trimmedLine.substring(4).trim();
+    } else if (trimmedLine.startsWith('[ ] ')) {
+      completed = false;
+      content = trimmedLine.substring(4).trim();
+    }
+    // Skip if content is empty after processing
+    if (!content) {
+      return;
+    }
+    // Check if this task already has ranking info and strip it for the task content
+    const rankingMatch = content.match(/^(.+?)\s+\|\s+Rank:\s+\d+\s+\|\s+Score:\s+[-\d.]+$/);
+    if (rankingMatch) {
+      // Strip ranking info from content
+      content = rankingMatch[1];
+      console.log(`Found task with ranking info: "${content}"`);
+    }
+    const taskId = `task-${index + 1}`; // Using 1-based index for task IDs to match backend
+    tasks.push({
+      id: taskId,
+      content: content,
+      completed: completed,
+      line: index
+    });
+    console.log(`Extracted task: id=${taskId}, line=${index}, content="${content}", completed=${completed}`);
+  });
+  console.log(`Total tasks extracted: ${tasks.length}`);
+  return tasks;
+};
+/**
+ * Format comparisons data as CSV
+ * @param comparisons Array of comparison objects
+ * @returns CSV formatted string
+ */
+export const comparisonsToCSV = (comparisons: Comparison[]): string => {
+  if (comparisons.length === 0) return '';
+  const headers = ['Date', 'Task A', 'Task B', 'Winner'];
+  const csvContent = [
+    headers.join(','),
+    ...comparisons.map(c => [
+      new Date(c.timestamp).toISOString(),
+      `"${c.taskA.content.replace(/"/g, '""')}"`,
+      `"${c.taskB.content.replace(/"/g, '""')}"`,
+      `"${c.winner.content.replace(/"/g, '""')}"`
+    ].join(','))
+  ].join('\n');
+  return csvContent;
+};
+/**
+ * Convert comparisons data to JSON
+ * @param comparisons Array of comparison objects
+ * @returns JSON string
+ */
+export const comparisonsToJSON = (comparisons: Comparison[]): string => {
+  return JSON.stringify(comparisons, null, 2);
+};
+/**
+ * Generate a unique ID
+ * @returns String ID
+ */
+export const generateId = (): string => {
+  return Math.random().toString(36).substring(2, 15) + 
+    Math.random().toString(36).substring(2, 15);
+};
+</file>
+
+<file path="src/utils/sortingUtils.ts">
+import type { Task, Comparison } from './markdownUtils';
+/**
+ * Calculate the score for each task based on comparison results.
+ * A higher score means the task was chosen more often as the winner.
+ * 
+ * @param tasks List of tasks
+ * @param comparisons List of comparisons
+ * @returns Tasks with scores, sorted from highest to lowest score
+ */
+export const calculateTaskRankings = (
+  tasks: Task[],
+  comparisons: Comparison[]
+): (Task & { score: number; rank: number })[] => {
+  // Initialize scores for all tasks
+  const taskScores = new Map<string, number>();
+  tasks.forEach(task => {
+    taskScores.set(task.id, 0);
+  });
+  // Calculate how many times each task won
+  comparisons.forEach(comparison => {
+    const winnerId = comparison.winner.id;
+    const currentScore = taskScores.get(winnerId) || 0;
+    taskScores.set(winnerId, currentScore + 1);
+  });
+  // Create a sorted list of tasks with scores
+  const rankedTasks = tasks
+    .filter(task => taskScores.has(task.id)) // Only include tasks that have been compared
+    .map(task => ({
+      ...task,
+      score: taskScores.get(task.id) || 0
+    }))
+    .sort((a, b) => b.score - a.score); // Sort by score (highest first)
+  // Add rank property
+  return rankedTasks.map((task, index) => ({
+    ...task,
+    rank: index + 1
+  }));
+};
+/**
+ * Calculate rankings using the Elo rating system, which is more
+ * sophisticated than simple win counting.
+ * 
+ * @param tasks List of tasks
+ * @param comparisons List of comparisons
+ * @param kFactor The K-factor determines how much each comparison affects scores (default: 32)
+ * @returns Tasks with Elo ratings, sorted from highest to lowest
+ */
+export const calculateEloRankings = (
+  tasks: Task[],
+  comparisons: Comparison[],
+  kFactor: number = 32
+): (Task & { eloRating: number; rank: number })[] => {
+  // Initialize Elo ratings (start at 1000)
+  const eloRatings = new Map<string, number>();
+  tasks.forEach(task => {
+    eloRatings.set(task.id, 1000);
+  });
+  // Process each comparison to update Elo ratings
+  comparisons.forEach(comparison => {
+    const taskAId = comparison.taskA.id;
+    const taskBId = comparison.taskB.id;
+    const winnerId = comparison.winner.id;
+    // Skip if either task doesn't have a rating (should not happen normally)
+    if (!eloRatings.has(taskAId) || !eloRatings.has(taskBId)) return;
+    const ratingA = eloRatings.get(taskAId)!;
+    const ratingB = eloRatings.get(taskBId)!;
+    // Calculate expected scores (probability of winning)
+    const expectedA = 1 / (1 + Math.pow(10, (ratingB - ratingA) / 400));
+    const expectedB = 1 / (1 + Math.pow(10, (ratingA - ratingB) / 400));
+    // Calculate new ratings
+    let newRatingA: number;
+    let newRatingB: number;
+    if (winnerId === taskAId) {
+      // Task A won
+      newRatingA = ratingA + kFactor * (1 - expectedA);
+      newRatingB = ratingB + kFactor * (0 - expectedB);
+    } else {
+      // Task B won
+      newRatingA = ratingA + kFactor * (0 - expectedA);
+      newRatingB = ratingB + kFactor * (1 - expectedB);
+    }
+    eloRatings.set(taskAId, newRatingA);
+    eloRatings.set(taskBId, newRatingB);
+  });
+  // Create a sorted list of tasks with Elo ratings
+  const rankedTasks = tasks
+    .filter(task => eloRatings.has(task.id))
+    .map(task => ({
+      ...task,
+      eloRating: eloRatings.get(task.id) || 1000
+    }))
+    .sort((a, b) => b.eloRating - a.eloRating); // Sort by Elo rating (highest first)
+  // Add rank property
+  return rankedTasks.map((task, index) => ({
+    ...task,
+    rank: index + 1
+  }));
+};
+</file>
+
+<file path="src/App.css">
+/* These styles will be applied by Tailwind instead */
+</file>
+
+<file path="src/App.tsx">
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
+import TaskSidebar from './components/TaskSidebar';
+import ComparisonView from './components/ComparisonView';
+import ComparisonLog from './components/ComparisonLog';
+import TaskRankings from './components/TaskRankings';
+import Editor from './components/Editor';
+import IdManager from './components/IdManager';
+import { extractTasks, comparisonsToCSV, generateId } from './utils/markdownUtils';
+import { comparisonsApi, healthCheck, rankingsApi, tasksApi } from './utils/apiClient';
+import type { Comparison, Task } from './utils/markdownUtils';
+import type { RankedTask } from './utils/apiClient';
+import './App.css';
+function App() {
+  const [markdownContent, setMarkdownContent] = useState<string>(() => {
+    // Try to load from localStorage first, fallback to default
+    const savedMarkdown = localStorage.getItem('markdown-content');
+    if (savedMarkdown) {
+      return savedMarkdown;
+    }
+    return '# Welcome to the Todo Sorter App!\n\n# Each line below is a task - comments start with #\nFirst task to do\nSecond task to do\nAnother important task\nLow priority task\n\n# You can mark completed tasks with ✓ or [x]\n✓ Example completed task\n\n# Add more tasks by simply typing them on new lines';
+  });
+  const [activeTab, setActiveTab] = useState<'editor-compare' | 'log'>('editor-compare');
+  const [comparisons, setComparisons] = useState<Comparison[]>([]);
+  const [apiStatus, setApiStatus] = useState<string | null>(null);
+  const [apiError, setApiError] = useState<string | null>(null);
+  const [isApiConnected, setIsApiConnected] = useState<boolean>(false);
+  const [rankedTasks, setRankedTasks] = useState<RankedTask[]>([]);
+  const [isLoadingRankings, setIsLoadingRankings] = useState<boolean>(false);
+  const [isUpdatingMarkdown, setIsUpdatingMarkdown] = useState<boolean>(false);
+  const [previousTasks, setPreviousTasks] = useState<string[]>([]);
+  // List ID state for authentication-free access control
+  const [listId, setListId] = useState<string>(() => {
+    // Try to load from localStorage first
+    const saved = localStorage.getItem('todo-list-id');
+    if (saved && saved.length >= 8) {
+      return saved;
+    }
+    // Generate a new random ID if none exists
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    let result = '';
+    for (let i = 0; i < 24; i++) {
+      result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return result;
+  });
+  // To track when we last fetched rankings to avoid too many API calls
+  const lastRankingFetchRef = useRef<number>(0);
+  // To track pending markdown changes
+  const markdownDebounceTimeout = useRef<number | null>(null);
+  // To track if we're in the middle of a ranking update to prevent editor jumps
+  const rankingUpdateInProgress = useRef<boolean>(false);
+  // Cache tasks to prevent disappearing during updates
+  const cachedTasksRef = useRef<Task[]>([]);
+  // Save the listId to localStorage whenever it changes (including initial generation)
+  useEffect(() => {
+    if (listId && listId.length >= 8) {
+      localStorage.setItem('todo-list-id', listId);
+      console.log('Saved list ID to localStorage:', listId);
+    }
+  }, [listId]);
+  // Memoized tasks extraction to avoid unnecessary recalculation
+  const tasks = useMemo(() => {
+    if (rankingUpdateInProgress.current) {
+      // If we're updating rankings, return cached tasks to avoid disappearing
+      return cachedTasksRef.current;
+    }
+    const extractedTasks = extractTasks(markdownContent);
+    // Cache the extracted tasks
+    cachedTasksRef.current = extractedTasks;
+    return extractedTasks;
+  }, [markdownContent]);
+  // Optimized content matching update method with better state management
+  const updateMarkdownWithRankingsByContent = useCallback(async (): Promise<boolean> => {
+    console.log('Content matching markdown update starting...');
+    if (!isApiConnected || rankingUpdateInProgress.current) {
+      console.error('API not connected or update in progress');
+      return false;
+    }
+    setIsUpdatingMarkdown(true);
+    rankingUpdateInProgress.current = true;
+    try {
+      // Get latest rankings from API if we don't have recent ones
+      let rankings = rankedTasks;
+      if (rankedTasks.length === 0 || Date.now() - lastRankingFetchRef.current > 5000) {
+        rankings = await fetchRankings();
+      }
+      if (rankings.length === 0) {
+        console.error('No rankings available');
+        return false;
+      }
+      // Get current task contents from the editor
+      const currentTasks = extractTasks(markdownContent);
+      const currentTaskContents = currentTasks.map(task => task.content);
+      // Create a map of task content to ranking data
+      // Only include rankings for tasks that exist in the editor
+      const contentRankMap = new Map();
+      rankings
+        .filter(task => currentTaskContents.includes(task.content))
+        .forEach(apiTask => {
+          contentRankMap.set(apiTask.content, {
+            score: apiTask.score,
+            rank: apiTask.rank
+          });
+        });
+      // Track if we've made any changes to avoid unnecessary rerenders
+      let hasChanges = false;
+      // Update the markdown directly by matching content
+      const lines = markdownContent.split('\n');
+      const updatedLines = lines.map(line => {
+        const trimmedLine = line.trim();
+        // Skip empty lines and comments
+        if (!trimmedLine || trimmedLine.startsWith('#')) {
+          return line;
+        }
+        let content = trimmedLine;
+        let completed = false;
+        let prefix = '';
+        // Check for completion markers and preserve them
+        if (trimmedLine.startsWith('✓ ')) {
+          completed = true;
+          content = trimmedLine.substring(2).trim();
+          prefix = '✓ ';
+        } else if (trimmedLine.startsWith('[x] ')) {
+          completed = true;
+          content = trimmedLine.substring(4).trim();
+          prefix = '[x] ';
+        } else if (trimmedLine.startsWith('[ ] ')) {
+          completed = false;
+          content = trimmedLine.substring(4).trim();
+          prefix = '[ ] ';
+        }
+        // Remove existing ranking info if present
+        const rankingMatch = content.match(/^(.+?)\s+\|\s+Rank:\s+\d+\s+\|\s+Score:\s+[-\d.]+$/);
+        if (rankingMatch) {
+          content = rankingMatch[1];
+        }
+        const rankData = contentRankMap.get(content);
+        if (rankData) {
+          // Base task with completion prefix
+          const baseTask = `${prefix}${content}`;
+          // New task with ranking
+          const newLine = `${baseTask} | Rank: ${rankData.rank} | Score: ${rankData.score.toFixed(2)}`;
+          // Only consider it a change if the line is actually different
+          if (newLine !== line) {
+            hasChanges = true;
+            return newLine;
+          }
+        } else {
+          // This is a task that doesn't have ranking data
+          // If it has ranking information, we should remove it
+          if (line.includes(' | Rank:')) {
+            hasChanges = true;
+            return `${prefix}${content}`;
+          }
+        }
+        return line;
+      });
+      if (!hasChanges) {
+        console.log('No changes needed in markdown');
+        return false;
+      }
+      const updatedMarkdown = updatedLines.join('\n');
+      // Use setTimeout to batch the state update and avoid editor jumps
+      setTimeout(() => {
+        setMarkdownContent(updatedMarkdown);
+        localStorage.setItem('markdown-content', updatedMarkdown);
+        setApiStatus('Markdown updated with latest rankings');
+      }, 50);
+      return true;
+    } catch (error) {
+      console.error('Error in direct update:', error);
+      setApiError('Direct update failed: ' + (error.message || 'Unknown error'));
+      return false;
+    } finally {
+      setIsUpdatingMarkdown(false);
+      // Allow task extraction again after a short delay
+      setTimeout(() => {
+        rankingUpdateInProgress.current = false;
+      }, 100);
+    }
+  }, [isApiConnected, rankedTasks, markdownContent]);
+  // Update markdown with rankings calls the content method
+  const updateMarkdownWithRankings = useCallback(async (): Promise<boolean> => {
+    console.log('Starting updateMarkdownWithRankings');
+    return updateMarkdownWithRankingsByContent();
+  }, [updateMarkdownWithRankingsByContent]);
+  // Optimized editor change handler with better debouncing
+  const handleEditorChange = useCallback((value: string) => {
+    // Skip if we're in the middle of a ranking update to prevent conflicts
+    if (rankingUpdateInProgress.current) {
+      return;
+    }
+    // Update the content immediately for responsiveness
+    setMarkdownContent(value);
+    // Clear any pending timeout
+    if (markdownDebounceTimeout.current) {
+      clearTimeout(markdownDebounceTimeout.current);
+    }
+    // Set a new timeout to save to localStorage after 1000ms of inactivity (increased for smoother typing)
+    markdownDebounceTimeout.current = setTimeout(() => {
+      localStorage.setItem('markdown-content', value);
+      markdownDebounceTimeout.current = null;
+    }, 1000) as unknown as number;
+  }, []);
+  // Optimized fetch rankings with better throttling
+  const fetchRankings = useCallback(async () => {
+    console.log('fetchRankings called with:', {
+      isApiConnected,
+      tasksLength: tasks.length,
+      comparisonsLength: comparisons.length,
+      listId
+    });
+    if (!isApiConnected || tasks.length === 0 || comparisons.length === 0 || !listId) {
+      console.log('Skipping fetchRankings due to missing prerequisites');
+      return [];
+    }
+    // Throttle API calls to once every 3 seconds (increased for smoother experience)
+    const now = Date.now();
+    if (now - lastRankingFetchRef.current < 3000) {
+      console.log('Throttling ranking fetch, last fetch was', (now - lastRankingFetchRef.current) / 1000, 'seconds ago');
+      return rankedTasks; // Return existing rankings instead of fetching
+    }
+    setIsLoadingRankings(true);
+    lastRankingFetchRef.current = now;
+    try {
+      console.log('Calling rankingsApi.getRankings()');
+      const rankings = await rankingsApi.getRankings(listId);
+      console.log('Rankings received from API:', rankings);
+      // Filter rankings to only include tasks that exist in the editor
+      const currentTaskContents = tasks.map(task => task.content);
+      const filteredRankings = rankings.filter(rankedTask => 
+        currentTaskContents.includes(rankedTask.content)
+      );
+      setRankedTasks(filteredRankings);
+      return filteredRankings;
+    } catch (error) {
+      console.error('Failed to fetch rankings from API:', error);
+      setApiError('Failed to fetch rankings from API');
+      return [];
+    } finally {
+      setIsLoadingRankings(false);
+    }
+  }, [isApiConnected, tasks.length, comparisons.length, listId, rankedTasks]);
+  // Optimized task sync effect with better debouncing
+  useEffect(() => {
+    // Skip if API is not connected or if we don't have any tasks
+    if (!isApiConnected || tasks.length === 0 || rankingUpdateInProgress.current) {
+      return;
+    }
+    // Get current task contents
+    const currentTaskContents = tasks.map(task => task.content);
+    // Check if we have any tasks that aren't in our rankings
+    const missingFromRankings = currentTaskContents.some(content => 
+      !rankedTasks.some(rankedTask => rankedTask.content === content)
+    );
+    // Check if we have any rankings that aren't in our tasks (should be filtered out)
+    const extraInRankings = rankedTasks.some(rankedTask => 
+      !currentTaskContents.includes(rankedTask.content)
+    );
+    // If we have inconsistencies, update the rankings with longer delay
+    if (missingFromRankings || extraInRankings) {
+      console.log('Tasks and rankings are out of sync, refreshing rankings...');
+      // Add a longer delay to avoid excessive updates
+      const timer = setTimeout(() => {
+        fetchRankings();
+      }, 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [tasks.length, rankedTasks.length, isApiConnected, fetchRankings]);
+  // Check API connection on mount
+  useEffect(() => {
+    const checkApiConnection = async () => {
+      try {
+        // Check if API is healthy and database is connected
+        const isHealthy = await healthCheck();
+        setIsApiConnected(isHealthy);
+        if (isHealthy) {
+          setApiStatus('Connected to API with database');
+          console.log('API connected with database, loading data from API...');
+          try {
+            // Load data from API
+            const apiComparisons = await comparisonsApi.getAllComparisons(listId);
+            console.log(`Loaded ${apiComparisons.length} comparisons from API`);
+            if (apiComparisons.length > 0) {
+              setComparisons(apiComparisons);
+              // Also fetch rankings with delay to prevent initial jerkiness
+              setTimeout(() => {
+                fetchRankings();
+              }, 500);
+            } else {
+              console.log('No comparisons found in API, using default data');
+            }
+          } catch (error) {
+            console.error('Failed to load data from API:', error);
+            // Fall back to local storage if API fails
+            setApiError('Failed to load data from API, using local storage');
+            loadFromLocalStorage();
+          }
+        } else {
+          setApiError('Using local storage (no database connection)');
+          console.log('No database connection, using local storage');
+          loadFromLocalStorage();
+        }
+      } catch (error) {
+        console.error('API health check error:', error);
+        setApiError('API connection error, using local storage');
+        setIsApiConnected(false);
+        loadFromLocalStorage();
+      }
+    };
+    const loadFromLocalStorage = () => {
+      // Load comparisons from localStorage (markdown is loaded in initial state)
+      const savedComparisons = localStorage.getItem('comparisons');
+      if (savedComparisons) {
+        try {
+          const parsedComparisons = JSON.parse(savedComparisons);
+          // Convert string dates back to Date objects
+          const formattedComparisons = parsedComparisons.map((c: any) => ({
+            ...c,
+            timestamp: new Date(c.timestamp)
+          }));
+          setComparisons(formattedComparisons);
+        } catch (error) {
+          console.error('Failed to parse saved comparisons', error);
+        }
+      }
+    };
+    checkApiConnection();
+  }, [listId, fetchRankings]);
+  // Optimized comparison updates with better delay
+  useEffect(() => {
+    // Use a reference to track if this effect already ran for this set of comparisons
+    const comparisonCount = comparisons.length;
+    if (isApiConnected && comparisonCount > 0) {
+      // Add a longer delay to avoid rapid re-renders
+      const timer = setTimeout(() => {
+        fetchRankings();
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [comparisons.length, isApiConnected, fetchRankings]);
+  // Optimized comparison completion handler
+  const handleComparisonComplete = useCallback(async (taskA: Task, taskB: Task, winner: Task) => {
+    // Make sure we have complete Task objects with line property
+    const completeTaskA = tasks.find(t => t.id === taskA.id) || taskA;
+    const completeTaskB = tasks.find(t => t.id === taskB.id) || taskB;
+    const completeWinner = tasks.find(t => t.id === winner.id) || winner;
+    const newComparison: Comparison = {
+      id: generateId(),
+      taskA: completeTaskA,
+      taskB: completeTaskB,
+      winner: completeWinner,
+      timestamp: new Date()
+    };
+    // Flag to track if we saved to API successfully
+    let apiSaveSuccess = false;
+    // If API is connected, send comparison to API
+    if (isApiConnected) {
+      try {
+        console.log('Sending comparison to API...');
+        await comparisonsApi.addComparison({
+          taskA: completeTaskA,
+          taskB: completeTaskB,
+          winner: completeWinner
+        }, listId);
+        console.log('Comparison saved to API successfully');
+        apiSaveSuccess = true;
+      } catch (error) {
+        console.error('Failed to save comparison to API:', error);
+        setApiError('Failed to save comparison to API, using local storage');
+      }
+    }
+    // Always save to local state and localStorage for fallback
+    setComparisons(prev => {
+      const updatedComparisons = [...prev, newComparison];
+      localStorage.setItem('comparisons', JSON.stringify(updatedComparisons));
+      return updatedComparisons;
+    });
+    // After saving comparison, update the rankings with longer delay
+    // Only if API save was successful
+    if (apiSaveSuccess) {
+      // Use a longer timeout to allow the API to update its rankings and reduce jerkiness
+      console.log('Scheduling automatic markdown update...');
+      setTimeout(async () => {
+        try {
+          console.log('Automatically updating markdown with rankings after comparison...');
+          const success = await updateMarkdownWithRankingsByContent();
+          if (success) {
+            console.log('Automatic markdown update successful');
+          } else {
+            console.warn('Automatic markdown update did not make any changes');
+          }
+        } catch (updateError) {
+          console.error('Failed to auto-update markdown with rankings:', updateError);
+        }
+      }, 2000); // Increased timeout for smoother experience
+    }
+  }, [tasks, isApiConnected, listId, updateMarkdownWithRankingsByContent]);
+  // Handle export to CSV
+  const handleExportCSV = useCallback(() => {
+    const csvContent = comparisonsToCSV(comparisons);
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `task-comparisons-${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }, [comparisons]);
+  // Handle export to Markdown
+  const handleExportMarkdown = useCallback(() => {
+    const blob = new Blob([markdownContent], { type: 'text/markdown;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `tasks-${new Date().toISOString().split('T')[0]}.md`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }, [markdownContent]);
+  // Optimized task deletion handler with better debouncing
+  useEffect(() => {
+    // Skip if API is not connected or if we don't have previous tasks data
+    if (!isApiConnected || rankingUpdateInProgress.current) {
+      // Update the previous tasks array for next comparison
+      const currentTaskContents = tasks.map(task => task.content);
+      setPreviousTasks(currentTaskContents);
+      return;
+    }
+    const currentTaskContents = tasks.map(task => task.content);
+    // Compare previous tasks with current tasks only if there's been an actual change
+    // to avoid unnecessary deletion API calls
+    if (previousTasks.length > 0 && 
+        JSON.stringify(previousTasks.sort()) !== JSON.stringify(currentTaskContents.sort())) {
+      // Find tasks that were in the previous set but not in the current set (they were deleted)
+      const deletedTasks = previousTasks.filter(
+        prevContent => !currentTaskContents.includes(prevContent)
+      );
+      // If we detected deleted tasks, remove them from the backend with debouncing
+      if (deletedTasks.length > 0) {
+        console.log(`Detected ${deletedTasks.length} deleted tasks:`, deletedTasks);
+        // Use timeout to debounce rapid task deletions
+        const timer = setTimeout(() => {
+          // Delete each removed task from the API
+          const deletePromises = deletedTasks.map(async (taskContent) => {
+            try {
+              const result = await tasksApi.deleteTask(taskContent, listId);
+              console.log(`Task "${taskContent}" deletion result:`, result);
+              return result;
+            } catch (error) {
+              console.error(`Failed to delete task "${taskContent}":`, error);
+              return false;
+            }
+          });
+          // When all deletions are processed, update the rankings
+          Promise.all(deletePromises).then(results => {
+            if (results.some(result => result)) {
+              // At least one task was successfully deleted
+              console.log("Successfully deleted tasks, refreshing rankings");
+              // Add delay to allow backend to process
+              setTimeout(() => {
+                fetchRankings();
+              }, 1000);
+            }
+          });
+        }, 500); // Debounce task deletions
+        return () => clearTimeout(timer);
+      }
+    }
+    // Update the previous tasks array for next comparison
+    // Only update if the content has actually changed
+    if (JSON.stringify(previousTasks) !== JSON.stringify(currentTaskContents)) {
+      setPreviousTasks(currentTaskContents);
+    }
+    // Only depend on task length changes, not the entire tasks array
+    // to avoid unnecessary re-renders and API calls
+  }, [tasks.length, isApiConnected, previousTasks, listId, fetchRankings]);
+  // Optimized task addition handler with better debouncing
+  useEffect(() => {
+    // Skip if API is not connected or updating rankings
+    if (!isApiConnected || rankingUpdateInProgress.current) {
+      return;
+    }
+    // First, get the current task contents
+    const currentTaskContents = tasks.map(task => task.content);
+    // If we don't have any tasks, or our previous task list is empty, just update the previous list
+    if (currentTaskContents.length === 0 || previousTasks.length === 0) {
+      setPreviousTasks(currentTaskContents);
+      return;
+    }
+    // Find new tasks that were added
+    const newTasks = currentTaskContents.filter(
+      content => !previousTasks.includes(content)
+    );
+    if (newTasks.length > 0) {
+      console.log(`Detected ${newTasks.length} new tasks:`, newTasks);
+      // Use timeout to debounce rapid task additions
+      const timer = setTimeout(() => {
+        // Register each new task with the API
+        const registerPromises = newTasks.map(async (taskContent) => {
+          try {
+            const result = await tasksApi.registerTask(taskContent, listId);
+            console.log(`Task "${taskContent}" registration result:`, result);
+            return result;
+          } catch (error) {
+            console.error(`Failed to register task "${taskContent}":`, error);
+            return false;
+          }
+        });
+        // When all registrations are processed, update the rankings
+        Promise.all(registerPromises).then(results => {
+          if (results.some(result => result)) {
+            // At least one task was successfully registered
+            console.log("Successfully registered new tasks, refreshing rankings");
+            // Add a longer delay to allow the backend to process the registrations
+            setTimeout(() => {
+              fetchRankings();
+            }, 1500);
+          }
+        });
+      }, 500); // Debounce task additions
+      return () => clearTimeout(timer);
+    }
+    // Now continue with the rest of the function
+  }, [tasks.length, isApiConnected, previousTasks, listId, fetchRankings]);
+  // Optimized list ID change handler
+  const handleListIdChange = useCallback((newListId: string) => {
+    setListId(newListId);
+    // Clear existing data when switching lists
+    setComparisons([]);
+    setRankedTasks([]);
+    setApiStatus('Switched to new list ID');
+    // Reload data for the new list
+    if (isApiConnected) {
+      setTimeout(() => {
+        loadComparisonsFromAPI();
+      }, 100);
+    }
+  }, [isApiConnected]);
+  // Optimized comparisons loading
+  const loadComparisonsFromAPI = useCallback(async () => {
+    if (!isApiConnected || !listId) {
+      return;
+    }
+    try {
+      console.log('Loading comparisons from API for list:', listId);
+      const apiComparisons = await comparisonsApi.getAllComparisons(listId);
+      setComparisons(apiComparisons);
+      console.log('Loaded', apiComparisons.length, 'comparisons from API');
+      // Also fetch rankings if we have comparisons with delay
+      if (apiComparisons.length > 0) {
+        setTimeout(() => {
+          fetchRankings();
+        }, 500);
+      }
+    } catch (error) {
+      console.error('Failed to load comparisons from API:', error);
+      setApiError('Failed to load comparisons from API');
+    }
+  }, [isApiConnected, listId, fetchRankings]);
+  return (
+    <div className="flex flex-col min-h-screen w-full bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-gray-900 dark:to-gray-800 text-gray-900 dark:text-gray-100">
+      {/* Modern Navbar */}
+      <header className="bg-white dark:bg-gray-800 shadow-sm sticky top-0 z-10 backdrop-blur-md bg-opacity-90 dark:bg-opacity-90">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
+            <div className="flex items-center space-x-3">
+              <div className="flex-shrink-0">
+                <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-violet-600 to-indigo-600 flex items-center justify-center shadow-lg">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+                  </svg>
+                </div>
+              </div>
+              <h1 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">Comparison Sorter</h1>
+            </div>
+            {/* API Status Indicator - modern badge */}
+            {isApiConnected ? (
+              <div className="flex items-center space-x-1 px-3 py-1.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800/50">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                </span>
+                <span>API Connected</span>
+              </div>
+            ) : (
+              <div className="flex items-center space-x-1 px-3 py-1.5 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800/50">
+                <span className="relative flex h-2 w-2">
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+                </span>
+                <span>Local Storage Mode</span>
+              </div>
+            )}
+          </div>
+        </div>
+      </header>
+      {/* Debug Info (development only) */}
+      {process.env.NODE_ENV !== 'production' && (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2">
+          <details className="mt-2 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden transition-all duration-200">
+            <summary className="cursor-pointer font-medium text-sm text-indigo-600 dark:text-indigo-400 px-4 py-3 focus:outline-none hover:bg-gray-50 dark:hover:bg-gray-750">
+              Debug Information
+            </summary>
+            <div className="px-4 py-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 text-xs space-y-3">
+              <div>
+                <h3 className="font-semibold text-gray-700 dark:text-gray-300">API Status:</h3>
+                <pre className="mt-1 bg-white dark:bg-gray-800 p-2 rounded-md border border-gray-200 dark:border-gray-700 overflow-auto text-xs text-gray-600 dark:text-gray-400">
+                  {JSON.stringify({ isApiConnected, apiStatus, apiError }, null, 2)}
+                </pre>
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-700 dark:text-gray-300">Tasks from Markdown:</h3>
+                <pre className="mt-1 bg-white dark:bg-gray-800 p-2 rounded-md border border-gray-200 dark:border-gray-700 overflow-auto text-xs text-gray-600 dark:text-gray-400">
+                  {JSON.stringify(tasks, null, 2)}
+                </pre>
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-700 dark:text-gray-300">Rankings:</h3>
+                <pre className="mt-1 bg-white dark:bg-gray-800 p-2 rounded-md border border-gray-200 dark:border-gray-700 overflow-auto text-xs text-gray-600 dark:text-gray-400">
+                  {JSON.stringify(rankedTasks, null, 2)}
+                </pre>
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-700 dark:text-gray-300">Comparisons:</h3>
+                <pre className="mt-1 bg-white dark:bg-gray-800 p-2 rounded-md border border-gray-200 dark:border-gray-700 overflow-auto text-xs text-gray-600 dark:text-gray-400">
+                  {JSON.stringify(comparisons.slice(0, 3), null, 2)}
+                  {comparisons.length > 3 && ` ... (${comparisons.length - 3} more)`}
+                </pre>
+              </div>
+            </div>
+          </details>
+        </div>
+      )}
+      {/* ID Manager */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+        <IdManager listId={listId} onListIdChange={handleListIdChange} />
+      </div>
+      {/* Main Content */}
+      <div className="flex-grow w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Modern Navigation Tabs */}
+        <div className="mb-10">
+          <div className="sm:hidden">
+            <select
+              className="block w-full rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 py-2 pl-3 pr-10 focus:border-indigo-500 dark:focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-300 dark:focus:ring-indigo-700 text-base"
+              value={activeTab}
+              onChange={(e) => setActiveTab(e.target.value as 'editor-compare' | 'log')}
+            >
+              <option value="editor-compare">Editor & Compare</option>
+              <option value="log">Comparison Log</option>
+            </select>
+          </div>
+          <div className="hidden sm:block">
+            <div className="flex justify-center">
+              <span className="inline-flex rounded-md shadow-sm p-1 bg-gray-100 dark:bg-gray-800">
+                <button
+                  onClick={() => setActiveTab('editor-compare')}
+                  className={`px-4 py-2 text-sm font-medium rounded-md transition-all duration-200 ${
+                    activeTab === 'editor-compare'
+                      ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 shadow-sm'
+                      : 'text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-750'
+                  }`}
+                >
+                  Editor & Compare
+                </button>
+                <button
+                  onClick={() => setActiveTab('log')}
+                  className={`px-4 py-2 text-sm font-medium rounded-md transition-all duration-200 ${
+                    activeTab === 'log'
+                      ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 shadow-sm'
+                      : 'text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-750'
+                  }`}
+                >
+                  Comparison Log
+                </button>
+              </span>
+            </div>
+          </div>
+        </div>
+        {activeTab === 'editor-compare' && (
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            {/* Left column: Editor and task list */}
+            <div className="lg:col-span-5 space-y-6">
+              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+                <div className="flex justify-between items-center px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700">
+                  <h2 className="text-base font-medium text-gray-700 dark:text-gray-300">Markdown Editor</h2>
+                  <div className="flex items-center space-x-3">
+                    <div className="text-xs text-gray-500 dark:text-gray-400 italic">Each line is a task, # for comments</div>
+                    <button
+                      onClick={handleExportMarkdown}
+                      className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md shadow-sm bg-green-600 text-white hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 dark:focus:ring-offset-gray-800 transition-all duration-200"
+                    >
+                      <svg className="w-3 h-3 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                      Export .md
+                    </button>
+                  </div>
+                </div>
+                <div className="h-80">
+                  <Editor
+                    value={markdownContent}
+                    onChange={handleEditorChange}
+                  />
+                </div>
+              </div>
+              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+                <div className="px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+                  <h2 className="text-base font-medium text-gray-700 dark:text-gray-300">
+                    Tasks <span className="ml-1 px-2 py-0.5 rounded-full text-xs bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400">{tasks.length}</span>
+                  </h2>
+                  <button
+                    onClick={updateMarkdownWithRankings}
+                    disabled={!isApiConnected || isLoadingRankings || isUpdatingMarkdown || comparisons.length === 0}
+                    className={`inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md shadow-sm transition-all duration-200 ${
+                      !isApiConnected || isLoadingRankings || isUpdatingMarkdown || comparisons.length === 0 
+                        ? 'bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed' 
+                        : 'bg-indigo-600 text-white hover:bg-indigo-700 dark:bg-indigo-700 dark:hover:bg-indigo-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-800'
+                    }`}
+                  >
+                    {isLoadingRankings || isUpdatingMarkdown ? (
+                      <>
+                        <svg className="animate-spin -ml-1 mr-2 h-3 w-3 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        {isUpdatingMarkdown ? 'Updating...' : 'Loading...'}
+                      </>
+                    ) : (
+                      'Update Rankings'
+                    )}
+                  </button>
+                </div>
+                <div className="max-h-[300px] overflow-y-auto p-4">
+                  <TaskSidebar markdown={markdownContent} />
+                </div>
+              </div>
+            </div>
+            {/* Right column: Comparison view and rankings */}
+            <div className="lg:col-span-7 space-y-6">
+              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+                <div className="px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700">
+                  <h2 className="text-base font-medium text-gray-700 dark:text-gray-300">Prioritize Tasks</h2>
+                </div>
+                <div className="p-4">
+                  <ComparisonView 
+                    tasks={tasks} 
+                    comparisons={comparisons}
+                    onComparisonComplete={handleComparisonComplete} 
+                  />
+                </div>
+              </div>
+              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+                <div className="px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700">
+                  <h2 className="text-base font-medium text-gray-700 dark:text-gray-300">Task Rankings</h2>
+                </div>
+                <div className="p-4">
+                  <TaskRankings tasks={tasks} comparisons={comparisons} listId={listId} />
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+        {activeTab === 'log' && (
+          <div className="max-w-5xl mx-auto">
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+              <div className="px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700">
+                <h2 className="text-base font-medium text-gray-700 dark:text-gray-300">Comparison History</h2>
+              </div>
+              <div className="p-4">
+                <ComparisonLog comparisons={comparisons} onExport={handleExportCSV} />
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+      {/* Modern toast notifications */}
+      <div className="fixed bottom-4 right-4 max-w-xs z-50 space-y-2 pointer-events-none">
+        {apiStatus && (
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg border-l-4 border-emerald-500 dark:border-emerald-600 px-4 py-3 transform transition-all duration-300 ease-in-out animate-fade-in-right pointer-events-auto">
+            <div className="flex items-start">
+              <div className="flex-shrink-0 pt-0.5">
+                <svg className="h-5 w-5 text-emerald-500 dark:text-emerald-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div className="ml-3">
+                <p className="text-sm text-gray-800 dark:text-gray-200">{apiStatus}</p>
+              </div>
+            </div>
+          </div>
+        )}
+        {apiError && (
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg border-l-4 border-amber-500 dark:border-amber-600 px-4 py-3 transform transition-all duration-300 ease-in-out animate-fade-in-right pointer-events-auto">
+            <div className="flex items-start">
+              <div className="flex-shrink-0 pt-0.5">
+                <svg className="h-5 w-5 text-amber-500 dark:text-amber-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div className="ml-3">
+                <p className="text-sm text-gray-800 dark:text-gray-200">{apiError}</p>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+export default App;
+</file>
+
+<file path="src/index.css">
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+/* Base styles that don't conflict with Tailwind */
+:root {
+  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+/* Remove previous default styles that were conflicting */
+/* Add styles to ensure editor content is visible - these are specific enough to not be overridden */
+.cm-editor {
+  color: #333;
+  background-color: #f9f9f9;
+}
+.cm-editor.cm-theme-dark {
+  color: #eee;
+  background-color: #1e1e1e;
+}
+.cm-editor .cm-content {
+  font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+  font-size: 14px;
+  line-height: 1.5;
+}
+/* Make sure markdown task checkboxes are visible */
+.cm-editor .cm-formatting-task {
+  color: inherit !important;
+}
+/* Ensure good contrast for all themes */
+.cm-editor .cm-line {
+  color: inherit !important;
+}
+/* Fix for root taking up full viewport height */
+#root {
+  min-height: 100vh;
+  width: 100%;
+}
+</file>
+
+<file path="src/main.tsx">
+import { StrictMode } from 'react'
+import { createRoot } from 'react-dom/client'
+import './index.css' // This contains the Tailwind imports
+import App from './App.tsx'
+createRoot(document.getElementById('root')!).render(
+  <StrictMode>
+    <App />
+  </StrictMode>,
+)
+</file>
+
+<file path="src/vite-env.d.ts">
+/// <reference types="vite/client" />
+</file>
+
+<file path=".gitignore">
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+</file>
+
+<file path="Dockerfile">
+FROM node:18-alpine AS build
+
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm ci
+
+COPY . .
+RUN npm run build
+
+FROM nginx:alpine
+
+COPY --from=build /app/dist /usr/share/nginx/html
+
+# Copy custom nginx config to handle SPA routing
+RUN rm /etc/nginx/conf.d/default.conf
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+
+EXPOSE 80
+
+CMD ["nginx", "-g", "daemon off;"]
+</file>
+
+<file path="eslint.config.js">
+import js from '@eslint/js'
+import globals from 'globals'
+import reactHooks from 'eslint-plugin-react-hooks'
+import reactRefresh from 'eslint-plugin-react-refresh'
+import tseslint from 'typescript-eslint'
+export default tseslint.config(
+  { ignores: ['dist'] },
+  {
+    extends: [js.configs.recommended, ...tseslint.configs.recommended],
+    files: ['**/*.{ts,tsx}'],
+    languageOptions: {
+      ecmaVersion: 2020,
+      globals: globals.browser,
+    },
+    plugins: {
+      'react-hooks': reactHooks,
+      'react-refresh': reactRefresh,
+    },
+    rules: {
+      ...reactHooks.configs.recommended.rules,
+      'react-refresh/only-export-components': [
+        'warn',
+        { allowConstantExport: true },
+      ],
+    },
+  },
+)
+</file>
+
+<file path="index.html">
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Vite + React + TS</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+</file>
+
+<file path="netlify.toml">
+[build]
+  command = "yarn build"
+  publish = "dist"
+</file>
+
+<file path="nginx.conf">
+server {
+    listen 80;
+    server_name _;
+    root /usr/share/nginx/html;
+    index index.html;
+
+    # Gzip compression
+    gzip on;
+    gzip_types text/plain text/css application/json application/javascript text/xml application/xml application/xml+rss text/javascript;
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    # Cache static assets
+    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg)$ {
+        expires 30d;
+        add_header Cache-Control "public, no-transform";
+    }
+
+    # Don't cache HTML
+    location ~* \.html$ {
+        expires -1;
+        add_header Cache-Control "no-store, no-cache, must-revalidate, proxy-revalidate";
+    }
+}
+</file>
+
+<file path="package.json">
+{
+  "name": "web",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "lint": "eslint .",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@codemirror/lang-markdown": "^6.3.2",
+    "@headlessui/react": "^1.7.18",
+    "@uiw/react-codemirror": "^4.23.12",
+    "axios": "^1.6.7",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^6.22.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.16",
+    "@types/react": "^18.2.48",
+    "@types/react-dom": "^18.2.18",
+    "@vitejs/plugin-react": "^4.2.1",
+    "autoprefixer": "^10.4.17",
+    "eslint": "^8.56.0",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "eslint-plugin-react-refresh": "^0.4.5",
+    "postcss": "^8.4.33",
+    "tailwindcss": "^3.4.1",
+    "typescript": "^5.3.3",
+    "vite": "^5.0.12"
+  },
+  "main": "index.js",
+  "license": "MIT"
+}
+</file>
+
+<file path="postcss.config.js">
+export default {
+  plugins: {
+    tailwindcss: {},
+    autoprefixer: {},
+  },
+}
+</file>
+
+<file path="README.md">
+# React + TypeScript + Vite
+
+This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+
+Currently, two official plugins are available:
+
+- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
+- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+
+## Expanding the ESLint configuration
+
+If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+
+```js
+export default tseslint.config({
+  extends: [
+    // Remove ...tseslint.configs.recommended and replace with this
+    ...tseslint.configs.recommendedTypeChecked,
+    // Alternatively, use this for stricter rules
+    ...tseslint.configs.strictTypeChecked,
+    // Optionally, add this for stylistic rules
+    ...tseslint.configs.stylisticTypeChecked,
+  ],
+  languageOptions: {
+    // other options...
+    parserOptions: {
+      project: ['./tsconfig.node.json', './tsconfig.app.json'],
+      tsconfigRootDir: import.meta.dirname,
+    },
+  },
+})
+```
+
+You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+
+```js
+// eslint.config.js
+import reactX from 'eslint-plugin-react-x'
+import reactDom from 'eslint-plugin-react-dom'
+
+export default tseslint.config({
+  plugins: {
+    // Add the react-x and react-dom plugins
+    'react-x': reactX,
+    'react-dom': reactDom,
+  },
+  rules: {
+    // other rules...
+    // Enable its recommended typescript rules
+    ...reactX.configs['recommended-typescript'].rules,
+    ...reactDom.configs.recommended.rules,
+  },
+})
+```
+</file>
+
+<file path="tailwind.config.js">
+/** @type {import('tailwindcss').Config} */
+module.exports = {
+  content: [
+    "./src/**/*.{js,ts,jsx,tsx}",
+    "./index.html"
+  ],
+  darkMode: 'media', // Enable dark mode based on system preference
+  theme: {
+    extend: {
+      colors: {
+        // Add custom colors for our modern UI
+        'gray-750': '#2D3748', // Custom shade between gray-700 and gray-800
+      },
+      animation: {
+        'fade-in-right': 'fadeInRight 0.3s ease-out',
+      },
+      keyframes: {
+        fadeInRight: {
+          '0%': { opacity: '0', transform: 'translateX(10px)' },
+          '100%': { opacity: '1', transform: 'translateX(0)' },
+        },
+      },
+    },
+  },
+  plugins: [],
+}
+</file>
+
+<file path="tsconfig.app.json">
+{
+  "compilerOptions": {
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",
+    "target": "ES2020",
+    "useDefineForClassFields": true,
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "skipLibCheck": true,
+
+    /* Bundler mode */
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "verbatimModuleSyntax": true,
+    "moduleDetection": "force",
+    "noEmit": true,
+    "jsx": "react-jsx",
+
+    /* Linting */
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "erasableSyntaxOnly": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedSideEffectImports": true
+  },
+  "include": ["src"]
+}
+</file>
+
+<file path="tsconfig.json">
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "useDefineForClassFields": true,
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "skipLibCheck": true,
+    
+    /* Bundler mode */
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "jsx": "react-jsx",
+
+    /* Linting */
+    "strict": false,
+    "noImplicitAny": false,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "noFallthroughCasesInSwitch": true
+  },
+  "include": ["src"],
+  "references": [{ "path": "./tsconfig.node.json" }]
+}
+</file>
+
+<file path="tsconfig.node.json">
+{
+  "compilerOptions": {
+    "composite": true,
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.node.tsbuildinfo",
+    "target": "ES2022",
+    "lib": ["ES2023"],
+    "module": "ESNext",
+    "skipLibCheck": true,
+
+    /* Bundler mode */
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "verbatimModuleSyntax": true,
+    "moduleDetection": "force",
+    "emitDeclarationOnly": true,
+
+    /* Linting */
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedSideEffectImports": true
+  },
+  "include": ["vite.config.ts"]
+}
+</file>
+
+<file path="vite.config.d.ts">
+declare const _default: import("vite").UserConfigFnObject;
+export default _default;
+</file>
+
+<file path="vite.config.ts">
+import { defineConfig } from 'vite'; import react from '@vitejs/plugin-react'; export default defineConfig({ plugins: [react()] });
+</file>
+
+</files>

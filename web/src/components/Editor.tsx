@@ -22,19 +22,58 @@ class ActionButtonMarker extends GutterMarker {
 
   toDOM() {
     const container = document.createElement('div');
-    container.className = 'flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity';
-    container.style.cssText = 'display: flex; align-items: center; gap: 2px; opacity: 0; transition: opacity 0.2s;';
+    container.className = 'editor-action-buttons';
+    container.style.cssText = `
+      display: flex; 
+      align-items: center; 
+      gap: 2px; 
+      opacity: 0.4; 
+      transition: opacity 0.2s ease;
+      justify-content: flex-start;
+      min-height: 20px;
+    `;
     
-    // Delete button
+    // Show buttons more prominently on hover
+    container.addEventListener('mouseenter', () => {
+      container.style.opacity = '1';
+    });
+    container.addEventListener('mouseleave', () => {
+      container.style.opacity = '0.4';
+    });
+    
+    // Delete button - always shown for task lines
     const deleteBtn = document.createElement('button');
     deleteBtn.innerHTML = `
       <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
       </svg>
     `;
-    deleteBtn.className = 'p-1 rounded text-red-500 hover:bg-red-50 transition-colors';
-    deleteBtn.style.cssText = 'padding: 2px; border-radius: 2px; color: #ef4444; background: none; border: none; cursor: pointer; display: flex; align-items: center;';
+    deleteBtn.style.cssText = `
+      padding: 2px; 
+      border-radius: 3px; 
+      color: #dc2626; 
+      background: rgba(239, 68, 68, 0.1); 
+      border: none; 
+      cursor: pointer; 
+      display: flex; 
+      align-items: center;
+      transition: all 0.2s ease;
+      width: 18px;
+      height: 18px;
+      justify-content: center;
+    `;
     deleteBtn.title = 'Delete line';
+    
+    // Enhanced hover effect for delete button
+    deleteBtn.addEventListener('mouseenter', () => {
+      deleteBtn.style.background = 'rgba(239, 68, 68, 0.2)';
+      deleteBtn.style.color = '#b91c1c';
+    });
+    deleteBtn.addEventListener('mouseleave', () => {
+      deleteBtn.style.background = 'rgba(239, 68, 68, 0.1)';
+      deleteBtn.style.color = '#dc2626';
+    });
+    
     deleteBtn.onclick = (e) => {
       e.preventDefault();
       e.stopPropagation();
@@ -51,9 +90,32 @@ class ActionButtonMarker extends GutterMarker {
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2M3 12l6.414 6.414a2 2 0 002.828 0L18 12M3 12l6.414-6.414a2 2 0 012.828 0L18 12" />
         </svg>
       `;
-      clearBtn.className = 'p-1 rounded text-orange-500 hover:bg-orange-50 transition-colors';
-      clearBtn.style.cssText = 'padding: 2px; border-radius: 2px; color: #f97316; background: none; border: none; cursor: pointer; display: flex; align-items: center;';
+      clearBtn.style.cssText = `
+        padding: 2px; 
+        border-radius: 3px; 
+        color: #ea580c; 
+        background: rgba(249, 115, 22, 0.1); 
+        border: none; 
+        cursor: pointer; 
+        display: flex; 
+        align-items: center;
+        transition: all 0.2s ease;
+        width: 18px;
+        height: 18px;
+        justify-content: center;
+      `;
       clearBtn.title = 'Clear score';
+      
+      // Enhanced hover effect for clear button
+      clearBtn.addEventListener('mouseenter', () => {
+        clearBtn.style.background = 'rgba(249, 115, 22, 0.2)';
+        clearBtn.style.color = '#c2410c';
+      });
+      clearBtn.addEventListener('mouseleave', () => {
+        clearBtn.style.background = 'rgba(249, 115, 22, 0.1)';
+        clearBtn.style.color = '#ea580c';
+      });
+      
       clearBtn.onclick = (e) => {
         e.preventDefault();
         e.stopPropagation();
@@ -145,20 +207,42 @@ const Editor: React.FC<EditorProps> = ({ value, onChange }) => {
     const style = document.createElement('style');
     style.textContent = `
       .cm-action-gutter {
-        min-width: 60px !important;
+        min-width: 50px !important;
         padding-left: 4px !important;
         padding-right: 4px !important;
+        background: #fafbfc !important;
+        border-right: 1px solid #e5e7eb !important;
       }
-      .cm-line:hover .cm-action-gutter > div {
+      
+      .cm-editor.cm-dark .cm-action-gutter {
+        background: #1f2937 !important;
+        border-right: 1px solid #374151 !important;
+      }
+      
+      .cm-line:hover .editor-action-buttons {
         opacity: 1 !important;
       }
-      .cm-editor .cm-gutter.cm-action-gutter {
-        background: var(--gutter-bg, #f8fafc);
-        border-right: 1px solid var(--gutter-border, #e2e8f0);
+      
+      .editor-action-buttons:hover {
+        opacity: 1 !important;
       }
+      
+      /* Ensure buttons are visible for task lines */
+      .cm-action-gutter .editor-action-buttons {
+        opacity: 0.4;
+        transition: opacity 0.2s ease;
+      }
+      
+      /* Make the gutter slightly wider and more prominent */
+      .cm-editor .cm-gutter.cm-action-gutter {
+        background: #fafbfc;
+        border-right: 1px solid #e5e7eb;
+        min-width: 50px;
+      }
+      
       .cm-editor.cm-dark .cm-gutter.cm-action-gutter {
-        background: var(--gutter-bg-dark, #1e293b);
-        border-right: 1px solid var(--gutter-border-dark, #374151);
+        background: #1f2937;
+        border-right: 1px solid #374151;
       }
     `;
     document.head.appendChild(style);

@@ -5,7 +5,7 @@ import ComparisonLog from './components/ComparisonLog';
 import TaskRankings from './components/TaskRankings';
 import Editor from './components/Editor';
 import IdManager from './components/IdManager';
-import { extractTasks, comparisonsToCSV, generateId } from './utils/markdownUtils';
+import { extractTasks, comparisonsToCSV, generateId, sortMarkdownByRankings, deduplicateComparisons } from './utils/markdownUtils';
 import { comparisonsApi, healthCheck, rankingsApi, tasksApi } from './utils/apiClient';
 import type { Comparison, Task } from './utils/markdownUtils';
 import type { RankedTask } from './utils/apiClient';
@@ -18,7 +18,7 @@ function App() {
     if (savedMarkdown) {
       return savedMarkdown;
     }
-    return '# Welcome to the Todo Sorter App!\n\n# Each line below is a task - comments start with #\nFirst task to do\nSecond task to do\nAnother important task\nLow priority task\n\n# You can mark completed tasks with ✓ or [x]\n✓ Example completed task\n\n# Add more tasks by simply typing them on new lines';
+    return '# Welcome to the Todo Sorter App!\n\n# Each task below is a list item - make comparisons to auto-sort them!\n- First task to do\n- Second task to do\n- Another important task\n- Low priority task\n\n# You can mark completed tasks with [x]\n- [x] Example completed task\n\n# Add more tasks as list items (- Task name)';
   });
   const [activeTab, setActiveTab] = useState<'editor-compare' | 'log'>('editor-compare');
   const [comparisons, setComparisons] = useState<Comparison[]>([]);
@@ -330,6 +330,9 @@ function App() {
             if (apiComparisons.length > 0) {
               setComparisons(apiComparisons);
               
+              // Clear localStorage comparisons to prevent confusion with API data
+              localStorage.removeItem('comparisons');
+              
               // Also fetch rankings with delay to prevent initial jerkiness
               setTimeout(() => {
                 fetchRankings();
@@ -367,7 +370,13 @@ function App() {
             ...c,
             timestamp: new Date(c.timestamp)
           }));
-          setComparisons(formattedComparisons);
+          
+          // Deduplicate comparisons to remove any duplicates
+          const deduplicatedComparisons = deduplicateComparisons(formattedComparisons);
+          setComparisons(deduplicatedComparisons);
+          
+          // Update localStorage with deduplicated data
+          localStorage.setItem('comparisons', JSON.stringify(deduplicatedComparisons));
         } catch (error) {
           console.error('Failed to parse saved comparisons', error);
         }
@@ -421,39 +430,54 @@ function App() {
         }, listId);
         console.log('Comparison saved to API successfully');
         apiSaveSuccess = true;
+        
+        // Update local state to reflect the new comparison immediately
+        setComparisons(prev => [...prev, newComparison]);
+        
       } catch (error) {
         console.error('Failed to save comparison to API:', error);
         setApiError('Failed to save comparison to API, using local storage');
       }
     }
     
-    // Always save to local state and localStorage for fallback
-    setComparisons(prev => {
-      const updatedComparisons = [...prev, newComparison];
-      localStorage.setItem('comparisons', JSON.stringify(updatedComparisons));
-      return updatedComparisons;
-    });
+    // Only save to localStorage if API is not connected or API save failed
+    if (!isApiConnected || !apiSaveSuccess) {
+      setComparisons(prev => {
+        const updatedComparisons = [...prev, newComparison];
+        localStorage.setItem('comparisons', JSON.stringify(updatedComparisons));
+        return updatedComparisons;
+      });
+    }
     
-    // After saving comparison, update the rankings with longer delay
-    // Only if API save was successful
+    // After saving comparison, auto-sort the markdown with updated rankings
     if (apiSaveSuccess) {
-      // Use a longer timeout to allow the API to update its rankings and reduce jerkiness
-      console.log('Scheduling automatic markdown update...');
+      console.log('Scheduling automatic markdown sorting after comparison...');
       setTimeout(async () => {
         try {
-          console.log('Automatically updating markdown with rankings after comparison...');
-          const success = await updateMarkdownWithRankingsByContent();
-          if (success) {
-            console.log('Automatic markdown update successful');
+          // First get the latest rankings
+          const latestRankings = await fetchRankings();
+          if (latestRankings && latestRankings.length > 0) {
+            // Auto-sort the markdown by rankings
+            const sortedMarkdown = sortMarkdownByRankings(markdownContent, latestRankings);
+            
+            // Update the markdown content with the sorted version
+            setMarkdownContent(sortedMarkdown);
+            localStorage.setItem('markdown-content', sortedMarkdown);
+            setApiStatus('Tasks auto-sorted by ranking!');
+            console.log('Markdown auto-sorted successfully after comparison');
           } else {
-            console.warn('Automatic markdown update did not make any changes');
+            console.warn('No rankings available for auto-sorting');
           }
-        } catch (updateError) {
-          console.error('Failed to auto-update markdown with rankings:', updateError);
+        } catch (error) {
+          console.error('Failed to auto-sort markdown after comparison:', error);
+          setApiError('Failed to auto-sort tasks');
         }
-      }, 2000); // Increased timeout for smoother experience
+      }, 2000); // Give the API time to process the comparison
+    } else {
+      // Even without API, we can still save the comparison locally
+      setApiStatus('Comparison saved locally');
     }
-  }, [tasks, isApiConnected, listId, updateMarkdownWithRankingsByContent]);
+  }, [tasks, isApiConnected, listId, markdownContent, fetchRankings]);
 
   // Handle export to CSV
   const handleExportCSV = useCallback(() => {
@@ -729,146 +753,71 @@ function App() {
       
       {/* Main Content */}
       <div className="flex-grow w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Modern Navigation Tabs */}
-        <div className="mb-10">
-          <div className="sm:hidden">
-            <select
-              className="block w-full rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 py-2 pl-3 pr-10 focus:border-indigo-500 dark:focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-300 dark:focus:ring-indigo-700 text-base"
-              value={activeTab}
-              onChange={(e) => setActiveTab(e.target.value as 'editor-compare' | 'log')}
-            >
-              <option value="editor-compare">Editor & Compare</option>
-              <option value="log">Comparison Log</option>
-            </select>
-          </div>
-          <div className="hidden sm:block">
-            <div className="flex justify-center">
-              <span className="inline-flex rounded-md shadow-sm p-1 bg-gray-100 dark:bg-gray-800">
-                <button
-                  onClick={() => setActiveTab('editor-compare')}
-                  className={`px-4 py-2 text-sm font-medium rounded-md transition-all duration-200 ${
-                    activeTab === 'editor-compare'
-                      ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 shadow-sm'
-                      : 'text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-750'
-                  }`}
-                >
-                  Editor & Compare
-                </button>
-                <button
-                  onClick={() => setActiveTab('log')}
-                  className={`px-4 py-2 text-sm font-medium rounded-md transition-all duration-200 ${
-                    activeTab === 'log'
-                      ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 shadow-sm'
-                      : 'text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-750'
-                  }`}
-                >
-                  Comparison Log
-                </button>
-              </span>
-            </div>
-          </div>
-        </div>
-        
-        {activeTab === 'editor-compare' && (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-            {/* Left column: Editor and task list */}
-            <div className="lg:col-span-5 space-y-6">
-              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
-                <div className="flex justify-between items-center px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700">
-                  <h2 className="text-base font-medium text-gray-700 dark:text-gray-300">Markdown Editor</h2>
-                  <div className="flex items-center space-x-3">
-                    <div className="text-xs text-gray-500 dark:text-gray-400 italic">Each line is a task, # for comments</div>
-                    <button
-                      onClick={handleExportMarkdown}
-                      className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md shadow-sm bg-green-600 text-white hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 dark:focus:ring-offset-gray-800 transition-all duration-200"
-                    >
-                      <svg className="w-3 h-3 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                      </svg>
-                      Export .md
-                    </button>
-                  </div>
-                </div>
-                <div className="h-80">
-                  <Editor
-                    value={markdownContent}
-                    onChange={handleEditorChange}
-                  />
-                </div>
-              </div>
-              
-              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
-                <div className="px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
-                  <h2 className="text-base font-medium text-gray-700 dark:text-gray-300">
-                    Tasks <span className="ml-1 px-2 py-0.5 rounded-full text-xs bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400">{tasks.length}</span>
-                  </h2>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* Left column: Markdown Editor */}
+          <div className="space-y-6">
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+              <div className="flex justify-between items-center px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700">
+                <h2 className="text-base font-medium text-gray-700 dark:text-gray-300">Task List (Auto-Sorted)</h2>
+                <div className="flex items-center space-x-3">
+                  <div className="text-xs text-gray-500 dark:text-gray-400 italic">Each line is a task. Use - for lists. Auto-sorts by ranking after comparisons.</div>
                   <button
-                    onClick={updateMarkdownWithRankings}
-                    disabled={!isApiConnected || isLoadingRankings || isUpdatingMarkdown || comparisons.length === 0}
-                    className={`inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md shadow-sm transition-all duration-200 ${
-                      !isApiConnected || isLoadingRankings || isUpdatingMarkdown || comparisons.length === 0 
-                        ? 'bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed' 
-                        : 'bg-indigo-600 text-white hover:bg-indigo-700 dark:bg-indigo-700 dark:hover:bg-indigo-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-800'
-                    }`}
+                    onClick={handleExportMarkdown}
+                    className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md shadow-sm bg-green-600 text-white hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 dark:focus:ring-offset-gray-800 transition-all duration-200"
                   >
-                    {isLoadingRankings || isUpdatingMarkdown ? (
-                      <>
-                        <svg className="animate-spin -ml-1 mr-2 h-3 w-3 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        {isUpdatingMarkdown ? 'Updating...' : 'Loading...'}
-                      </>
-                    ) : (
-                      'Update Rankings'
-                    )}
+                    <svg className="w-3 h-3 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    Export .md
                   </button>
                 </div>
-                <div className="max-h-[300px] overflow-y-auto p-4">
-                  <TaskSidebar markdown={markdownContent} />
-                </div>
+              </div>
+              <div className="h-96">
+                <Editor
+                  value={markdownContent}
+                  onChange={handleEditorChange}
+                />
               </div>
             </div>
             
-            {/* Right column: Comparison view and rankings */}
-            <div className="lg:col-span-7 space-y-6">
-              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
-                <div className="px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700">
-                  <h2 className="text-base font-medium text-gray-700 dark:text-gray-300">Prioritize Tasks</h2>
-                </div>
-                <div className="p-4">
-                  <ComparisonView 
-                    tasks={tasks} 
-                    comparisons={comparisons}
-                    onComparisonComplete={handleComparisonComplete} 
-                  />
-                </div>
-              </div>
-              
-              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
-                <div className="px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700">
-                  <h2 className="text-base font-medium text-gray-700 dark:text-gray-300">Task Rankings</h2>
-                </div>
-                <div className="p-4">
-                  <TaskRankings tasks={tasks} comparisons={comparisons} listId={listId} />
-                </div>
+            {/* Quick stats */}
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-4">
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-gray-600 dark:text-gray-400">
+                  Tasks: <span className="font-medium text-gray-900 dark:text-gray-100">{tasks.length}</span>
+                </span>
+                <span className="text-gray-600 dark:text-gray-400">
+                  Comparisons: <span className="font-medium text-gray-900 dark:text-gray-100">{comparisons.length}</span>
+                </span>
+                <button
+                  onClick={handleExportCSV}
+                  className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 text-xs font-medium"
+                >
+                  Export Log
+                </button>
               </div>
             </div>
           </div>
-        )}
-        
-        {activeTab === 'log' && (
-          <div className="max-w-5xl mx-auto">
+          
+          {/* Right column: Comparison view */}
+          <div className="space-y-6">
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
               <div className="px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700">
-                <h2 className="text-base font-medium text-gray-700 dark:text-gray-300">Comparison History</h2>
+                <h2 className="text-base font-medium text-gray-700 dark:text-gray-300">
+                  Make Comparisons
+                  <span className="ml-2 text-xs text-gray-500 dark:text-gray-400">(Click or use 1/2 keys)</span>
+                </h2>
               </div>
-              <div className="p-4">
-                <ComparisonLog comparisons={comparisons} onExport={handleExportCSV} />
+              <div className="p-6">
+                <ComparisonView 
+                  tasks={tasks} 
+                  comparisons={comparisons}
+                  onComparisonComplete={handleComparisonComplete} 
+                />
               </div>
             </div>
           </div>
-        )}
+        </div>
       </div>
 
       {/* Modern toast notifications */}

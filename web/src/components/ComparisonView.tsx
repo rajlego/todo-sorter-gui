@@ -10,7 +10,27 @@ interface ComparisonViewProps {
 const ComparisonView: React.FC<ComparisonViewProps> = ({ tasks, comparisons = [], onComparisonComplete }) => {
   const [currentPair, setCurrentPair] = useState<[Task, Task] | null>(null);
   const [remainingPairs, setRemainingPairs] = useState<[Task, Task][]>([]);
-  const [comparisonsCount, setComparisonsCount] = useState(0);
+  const [initialRoundComplete, setInitialRoundComplete] = useState(false);
+
+  // Calculate comparison count from the actual comparisons array
+  const comparisonsCount = comparisons.length;
+
+  // Generate a random pair from all possible pairs
+  const generateRandomPair = (taskList: Task[]): [Task, Task] | null => {
+    if (taskList.length < 2) return null;
+    
+    // Generate all possible pairs
+    const allPairs: [Task, Task][] = [];
+    for (let i = 0; i < taskList.length; i++) {
+      for (let j = i + 1; j < taskList.length; j++) {
+        allPairs.push([taskList[i], taskList[j]]);
+      }
+    }
+    
+    // Return a random pair
+    const randomIndex = Math.floor(Math.random() * allPairs.length);
+    return allPairs[randomIndex];
+  };
 
   // Generate all possible pairs of tasks and filter out already compared pairs
   useEffect(() => {
@@ -25,7 +45,6 @@ const ComparisonView: React.FC<ComparisonViewProps> = ({ tasks, comparisons = []
     }
     
     // Filter out pairs that have already been compared
-    // We need to check both A->B and B->A combinations since comparison order matters
     const comparedPairs = new Set<string>();
     comparisons.forEach(comparison => {
       // Create normalized pair keys (always put smaller content first for consistency)
@@ -39,6 +58,10 @@ const ComparisonView: React.FC<ComparisonViewProps> = ({ tasks, comparisons = []
       return !comparedPairs.has(pairKey);
     });
     
+    // Check if initial round is complete
+    const isInitialComplete = uncomparedPairs.length === 0 && allPairs.length > 0;
+    setInitialRoundComplete(isInitialComplete);
+    
     // Shuffle the remaining pairs
     const shuffledPairs = [...uncomparedPairs].sort(() => Math.random() - 0.5);
     setRemainingPairs(shuffledPairs);
@@ -46,6 +69,9 @@ const ComparisonView: React.FC<ComparisonViewProps> = ({ tasks, comparisons = []
     // Set the first pair
     if (shuffledPairs.length > 0) {
       setCurrentPair(shuffledPairs[0]);
+    } else if (isInitialComplete) {
+      // If initial round is complete, don't set a current pair yet
+      setCurrentPair(null);
     } else {
       setCurrentPair(null);
     }
@@ -54,6 +80,10 @@ const ComparisonView: React.FC<ComparisonViewProps> = ({ tasks, comparisons = []
   // Select the next pair after a comparison
   const getNextPair = () => {
     if (remainingPairs.length <= 1) {
+      // If this was the last pair in the initial round, mark it complete
+      if (!initialRoundComplete) {
+        setInitialRoundComplete(true);
+      }
       setCurrentPair(null);
       return;
     }
@@ -64,14 +94,32 @@ const ComparisonView: React.FC<ComparisonViewProps> = ({ tasks, comparisons = []
     setCurrentPair(newRemainingPairs[0]);
   };
 
+  // Continue with random comparisons
+  const continueRandomComparisons = () => {
+    const randomPair = generateRandomPair(tasks);
+    if (randomPair) {
+      setCurrentPair(randomPair);
+    }
+  };
+
   // Handle task selection
   const handleTaskSelect = (winner: Task) => {
     if (!currentPair) return;
     
     const [taskA, taskB] = currentPair;
     onComparisonComplete(taskA, taskB, winner);
-    setComparisonsCount(prev => prev + 1);
-    getNextPair();
+    
+    // If we're in continuous mode (initial round complete), generate a new random pair
+    if (initialRoundComplete) {
+      setTimeout(() => {
+        const randomPair = generateRandomPair(tasks);
+        if (randomPair) {
+          setCurrentPair(randomPair);
+        }
+      }, 500); // Small delay for smoother UX
+    } else {
+      getNextPair();
+    }
   };
 
   // Handle keyboard shortcuts (1 and 2)
@@ -106,7 +154,7 @@ const ComparisonView: React.FC<ComparisonViewProps> = ({ tasks, comparisons = []
     );
   }
 
-  if (!currentPair) {
+  if (!currentPair && initialRoundComplete) {
     return (
       <div className="flex flex-col items-center justify-center p-8 text-center">
         <div className="w-16 h-16 mb-4 text-emerald-500 dark:text-emerald-400">
@@ -114,15 +162,38 @@ const ComparisonView: React.FC<ComparisonViewProps> = ({ tasks, comparisons = []
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
         </div>
-        <h2 className="text-xl font-bold mb-2 text-gray-700 dark:text-gray-300">Comparison Complete!</h2>
-        <p className="text-gray-600 dark:text-gray-400">
-          You've completed {comparisonsCount} comparisons.
+        <h2 className="text-xl font-bold mb-2 text-gray-700 dark:text-gray-300">Initial Round Complete!</h2>
+        <p className="text-gray-600 dark:text-gray-400 mb-4">
+          You've completed {comparisonsCount} comparisons. Your tasks should now be sorted by priority!
         </p>
-        {comparisonsCount > 0 && (
-          <p className="mt-4 text-sm text-gray-500 dark:text-gray-400">
-            Check the Task Rankings section to see the results.
-          </p>
-        )}
+        <button
+          onClick={continueRandomComparisons}
+          className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-700 dark:hover:bg-indigo-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-800 transition-all duration-200"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+          Continue Comparing
+        </button>
+        <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
+          Keep refining your rankings with more comparisons
+        </p>
+      </div>
+    );
+  }
+
+  if (!currentPair) {
+    return (
+      <div className="flex flex-col items-center justify-center p-8 text-center">
+        <div className="w-16 h-16 mb-4 text-gray-300 dark:text-gray-600">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </div>
+        <h2 className="text-xl font-bold mb-2 text-gray-700 dark:text-gray-300">Preparing Comparisons...</h2>
+        <p className="text-gray-500 dark:text-gray-400 max-w-sm">
+          Setting up task pairs for comparison.
+        </p>
       </div>
     );
   }
@@ -182,9 +253,18 @@ const ComparisonView: React.FC<ComparisonViewProps> = ({ tasks, comparisons = []
       </div>
       
       <div className="text-center text-sm text-gray-500 dark:text-gray-400">
-        <span className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200">
-          {remainingPairs.length} comparisons remaining
-        </span>
+        {initialRoundComplete ? (
+          <span className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-800 text-emerald-800 dark:text-emerald-200">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            Refining rankings...
+          </span>
+        ) : (
+          <span className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200">
+            {remainingPairs.length} initial comparisons remaining
+          </span>
+        )}
       </div>
     </div>
   );

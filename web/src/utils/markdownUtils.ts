@@ -17,8 +17,8 @@ export interface Comparison {
 
 /**
  * Extract tasks from markdown content
- * New format: Each line is a task unless it starts with # (comment)
- * Completed tasks can start with ✓ or [x]
+ * Format: Supports both plain text lines and markdown list items (- content)
+ * Completed tasks can use - [x] content or - ✓ content
  * @param markdown Markdown content
  * @returns Array of Task objects
  */
@@ -34,19 +34,49 @@ export const extractTasks = (markdown: string): Task[] => {
       return;
     }
     
-    let content = trimmedLine;
+    let content = '';
     let completed = false;
     
-    // Check for completion markers
-    if (trimmedLine.startsWith('✓ ')) {
+    // Check for markdown list items with completion markers first
+    if (trimmedLine.match(/^-\s+\[x\]\s+(.+)$/)) {
+      // - [x] completed task
+      const match = trimmedLine.match(/^-\s+\[x\]\s+(.+)$/);
       completed = true;
-      content = trimmedLine.substring(2).trim();
-    } else if (trimmedLine.startsWith('[x] ')) {
-      completed = true;
-      content = trimmedLine.substring(4).trim();
-    } else if (trimmedLine.startsWith('[ ] ')) {
+      content = match![1];
+    } else if (trimmedLine.match(/^-\s+\[\s\]\s+(.+)$/)) {
+      // - [ ] incomplete task
+      const match = trimmedLine.match(/^-\s+\[\s\]\s+(.+)$/);
       completed = false;
-      content = trimmedLine.substring(4).trim();
+      content = match![1];
+    } else if (trimmedLine.match(/^-\s+✓\s+(.+)$/)) {
+      // - ✓ completed task
+      const match = trimmedLine.match(/^-\s+✓\s+(.+)$/);
+      completed = true;
+      content = match![1];
+    } else if (trimmedLine.match(/^-\s+(.+)$/)) {
+      // - regular markdown list task
+      const match = trimmedLine.match(/^-\s+(.+)$/);
+      completed = false;
+      content = match![1];
+    } else if (trimmedLine.match(/^✓\s+(.+)$/)) {
+      // ✓ completed task (without -)
+      const match = trimmedLine.match(/^✓\s+(.+)$/);
+      completed = true;
+      content = match![1];
+    } else if (trimmedLine.match(/^\[x\]\s+(.+)$/)) {
+      // [x] completed task (without -)
+      const match = trimmedLine.match(/^\[x\]\s+(.+)$/);
+      completed = true;
+      content = match![1];
+    } else if (trimmedLine.match(/^\[\s\]\s+(.+)$/)) {
+      // [ ] incomplete task (without -)
+      const match = trimmedLine.match(/^\[\s\]\s+(.+)$/);
+      completed = false;
+      content = match![1];
+    } else {
+      // Plain text line - treat as task
+      content = trimmedLine;
+      completed = false;
     }
     
     // Skip if content is empty after processing
@@ -55,11 +85,11 @@ export const extractTasks = (markdown: string): Task[] => {
     }
     
     // Check if this task already has ranking info and strip it for the task content
-    const rankingMatch = content.match(/^(.+?)\s+\|\s+Rank:\s+\d+\s+\|\s+Score:\s+[-\d.]+$/);
+    const rankingMatch = content.match(/^(.+?)\s+\|\s+Rank:\s+(\d+)\s+\|\s+Score:\s+([-\d.]+)$/);
     if (rankingMatch) {
-      // Strip ranking info from content
+      // Strip ranking info from content and store rank/score
       content = rankingMatch[1];
-      console.log(`Found task with ranking info: "${content}"`);
+      console.log(`Found task with ranking info: "${content}" (Rank: ${rankingMatch[2]}, Score: ${rankingMatch[3]})`);
     }
     
     const taskId = `task-${index + 1}`; // Using 1-based index for task IDs to match backend
@@ -74,6 +104,136 @@ export const extractTasks = (markdown: string): Task[] => {
   
   console.log(`Total tasks extracted: ${tasks.length}`);
   return tasks;
+};
+
+/**
+ * Sort markdown content by rankings (auto-sort after comparisons)
+ * @param markdown Original markdown content
+ * @param rankedTasks Array of ranked tasks with scores
+ * @returns Sorted markdown content
+ */
+export const sortMarkdownByRankings = (markdown: string, rankedTasks: any[]): string => {
+  console.log('Auto-sorting markdown by rankings...');
+  
+  const lines = markdown.split('\n');
+  const taskLines: { line: string, rank: number, score: number, completed: boolean, wasListItem: boolean }[] = [];
+  const nonTaskLines: { line: string, index: number }[] = [];
+  
+  // Separate task lines from non-task lines (comments, empty lines)
+  lines.forEach((line, index) => {
+    const trimmedLine = line.trim();
+    if (!trimmedLine || trimmedLine.startsWith('#')) {
+      nonTaskLines.push({ line, index });
+      return;
+    }
+    
+    let content = '';
+    let completed = false;
+    let wasListItem = false;
+    
+    // Extract content from various formats
+    if (trimmedLine.match(/^-\s+\[x\]\s+(.+)$/)) {
+      const match = trimmedLine.match(/^-\s+\[x\]\s+(.+)$/);
+      completed = true;
+      content = match![1];
+      wasListItem = true;
+    } else if (trimmedLine.match(/^-\s+\[\s\]\s+(.+)$/)) {
+      const match = trimmedLine.match(/^-\s+\[\s\]\s+(.+)$/);
+      completed = false;
+      content = match![1];
+      wasListItem = true;
+    } else if (trimmedLine.match(/^-\s+✓\s+(.+)$/)) {
+      const match = trimmedLine.match(/^-\s+✓\s+(.+)$/);
+      completed = true;
+      content = match![1];
+      wasListItem = true;
+    } else if (trimmedLine.match(/^-\s+(.+)$/)) {
+      const match = trimmedLine.match(/^-\s+(.+)$/);
+      completed = false;
+      content = match![1];
+      wasListItem = true;
+    } else if (trimmedLine.match(/^✓\s+(.+)$/)) {
+      const match = trimmedLine.match(/^✓\s+(.+)$/);
+      completed = true;
+      content = match![1];
+      wasListItem = false;
+    } else if (trimmedLine.match(/^\[x\]\s+(.+)$/)) {
+      const match = trimmedLine.match(/^\[x\]\s+(.+)$/);
+      completed = true;
+      content = match![1];
+      wasListItem = false;
+    } else if (trimmedLine.match(/^\[\s\]\s+(.+)$/)) {
+      const match = trimmedLine.match(/^\[\s\]\s+(.+)$/);
+      completed = false;
+      content = match![1];
+      wasListItem = false;
+    } else {
+      // Plain text line
+      content = trimmedLine;
+      completed = false;
+      wasListItem = false;
+    }
+    
+    // Skip if this looks like a non-task line
+    if (!content) {
+      nonTaskLines.push({ line, index });
+      return;
+    }
+    
+    // Strip existing ranking info
+    const rankingMatch = content.match(/^(.+?)\s+\|\s+Rank:\s+\d+\s+\|\s+Score:\s+[-\d.]+$/);
+    if (rankingMatch) {
+      content = rankingMatch[1];
+    }
+    
+    // Find ranking data for this task
+    const rankData = rankedTasks.find(task => task.content === content);
+    const rank = rankData ? rankData.rank : 999;
+    const score = rankData ? rankData.score : 0;
+    
+    taskLines.push({ line: content, rank, score, completed, wasListItem });
+  });
+  
+  // Sort task lines by rank (lower rank = higher priority)
+  taskLines.sort((a, b) => {
+    // Completed tasks go to bottom
+    if (a.completed && !b.completed) return 1;
+    if (!a.completed && b.completed) return -1;
+    // Within same completion status, sort by rank
+    return a.rank - b.rank;
+  });
+  
+  // Rebuild markdown with sorted tasks
+  const sortedLines: string[] = [];
+  
+  // Add header comments at the top
+  nonTaskLines
+    .filter(item => item.index < 3) // Keep initial comments
+    .forEach(item => sortedLines.push(item.line));
+  
+  // Add sorted tasks - convert all to list format for consistency
+  taskLines.forEach(({ line, rank, score, completed }) => {
+    let prefix = '- ';
+    if (completed) {
+      prefix = '- [x] ';
+    }
+    
+    let taskLine = `${prefix}${line}`;
+    if (rank !== 999 && score !== 0) {
+      taskLine += ` | Rank: ${rank} | Score: ${score.toFixed(2)}`;
+    }
+    
+    sortedLines.push(taskLine);
+  });
+  
+  // Add any trailing comments
+  nonTaskLines
+    .filter(item => item.index >= lines.length - 2) // Keep trailing comments
+    .forEach(item => sortedLines.push(item.line));
+  
+  const result = sortedLines.join('\n');
+  console.log('Auto-sorting completed');
+  return result;
 };
 
 /**
@@ -114,4 +274,28 @@ export const comparisonsToJSON = (comparisons: Comparison[]): string => {
 export const generateId = (): string => {
   return Math.random().toString(36).substring(2, 15) + 
     Math.random().toString(36).substring(2, 15);
+};
+
+/**
+ * Remove duplicate comparisons based on task content
+ * @param comparisons Array of comparison objects
+ * @returns Deduplicated array of comparisons
+ */
+export const deduplicateComparisons = (comparisons: Comparison[]): Comparison[] => {
+  const seen = new Set<string>();
+  const deduplicated: Comparison[] = [];
+  
+  comparisons.forEach(comparison => {
+    // Create a normalized key for the comparison (task contents sorted)
+    const contents = [comparison.taskA.content, comparison.taskB.content].sort();
+    const key = `${contents[0]}|||${contents[1]}|||${comparison.winner.content}|||${comparison.timestamp.toISOString()}`;
+    
+    if (!seen.has(key)) {
+      seen.add(key);
+      deduplicated.push(comparison);
+    }
+  });
+  
+  console.log(`Deduplication: ${comparisons.length} -> ${deduplicated.length} comparisons (removed ${comparisons.length - deduplicated.length} duplicates)`);
+  return deduplicated;
 }; 
