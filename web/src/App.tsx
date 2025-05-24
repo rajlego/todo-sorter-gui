@@ -52,6 +52,8 @@ function App() {
   const markdownDebounceTimeout = useRef<number | null>(null);
   // To track if we're in the middle of a ranking update to prevent editor jumps
   const rankingUpdateInProgress = useRef<boolean>(false);
+  // Cache tasks to prevent disappearing during updates
+  const cachedTasksRef = useRef<Task[]>([]);
 
   // Save the listId to localStorage whenever it changes (including initial generation)
   useEffect(() => {
@@ -64,10 +66,13 @@ function App() {
   // Memoized tasks extraction to avoid unnecessary recalculation
   const tasks = useMemo(() => {
     if (rankingUpdateInProgress.current) {
-      // If we're updating rankings, don't recalculate tasks to avoid jumping
-      return [];
+      // If we're updating rankings, return cached tasks to avoid disappearing
+      return cachedTasksRef.current;
     }
-    return extractTasks(markdownContent);
+    const extractedTasks = extractTasks(markdownContent);
+    // Cache the extracted tasks
+    cachedTasksRef.current = extractedTasks;
+    return extractedTasks;
   }, [markdownContent]);
 
   // Optimized content matching update method with better state management
